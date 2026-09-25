@@ -26,9 +26,12 @@ class ContactResource extends Resource
                 Forms\Components\TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('phone')
+                Forms\Components\TextInput::make('service')
                     ->maxLength(50),
                 Forms\Components\TextInput::make('email')
+                    ->email()
+                    ->maxLength(255),
+                Forms\Components\TextInput::make('company_name')
                     ->email()
                     ->maxLength(255),
                 Forms\Components\Textarea::make('message')
@@ -42,7 +45,8 @@ class ContactResource extends Resource
             ->columns([
                 Tables\Columns\TextColumn::make('id')->sortable()->label('شناسه'),
                 Tables\Columns\TextColumn::make('name')->sortable()->searchable()->label('نام مشتری'),
-                Tables\Columns\TextColumn::make('phone')->sortable()->searchable()->label('تلفن'),
+                Tables\Columns\TextColumn::make('service')->sortable()->searchable()->label('خدمات'),
+                Tables\Columns\TextColumn::make('company_name')->sortable()->searchable()->label('تام شرکت'),
                 Tables\Columns\TextColumn::make('email')->sortable()->searchable()->label('ایمیل'),
                 Tables\Columns\TextColumn::make('message')->limit(50)->label('پیام'),
                 Tables\Columns\TextColumn::make('created_at')->dateTime()->sortable(),

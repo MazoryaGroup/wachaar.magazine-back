@@ -59,20 +59,17 @@ class WaitingListResource extends Resource
                     ->label('شناسه')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('full_name')
-                    ->label('نام')
-                    ->searchable()
-                    ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('email')
                     ->label('ایمیل')
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('phone')
-                    ->label('تلفن')
-                    ->searchable()
-                    ->sortable(),
+//                Tables\Columns\TextColumn::make('phone')
+//                    ->label('تلفن')
+//                    ->searchable()
+//                    ->sortable(),
 
 
 

@@ -28,10 +28,18 @@ class ContactController extends Controller
                 'max:255',
             ],
 
-            'phone' => [
+            // سرویس موردنظر
+            'service' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            // نام شرکت
+            'company_name' => [
                 'nullable',
                 'string',
-                'max:20',
+                'max:255',
             ],
 
             'message' => [
@@ -45,10 +53,15 @@ class ContactController extends Controller
 
             // پاکسازی ورودی‌ها
             $validated['name'] = strip_tags(trim($validated['name']));
+
             $validated['message'] = strip_tags(trim($validated['message']));
 
-            if (!empty($validated['phone'])) {
-                $validated['phone'] = strip_tags(trim($validated['phone']));
+            $validated['service'] = strip_tags(trim($validated['service']));
+
+            if (!empty($validated['company_name'])) {
+                $validated['company_name'] = strip_tags(
+                    trim($validated['company_name'])
+                );
             }
 
             $validated['email'] = strtolower(trim($validated['email']));
@@ -63,6 +76,8 @@ class ContactController extends Controller
                     'id' => $contact->id,
                     'name' => $contact->name,
                     'email' => $contact->email,
+                    'service' => $contact->service,
+                    'company_name' => $contact->company_name,
                 ],
             ], 201);
 

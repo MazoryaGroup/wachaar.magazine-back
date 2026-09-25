@@ -11,6 +11,7 @@ use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ArtistController;
+use App\Http\Controllers\Api\BlogController;
 
 
 
@@ -65,19 +66,19 @@ Route::prefix('v1')->group(function () {
 
 
 
-Route::prefix('v1')->group(function () {
-
-    Route::get('/artists', [ArtistController::class, 'index']);
-
-    Route::get('/artists/{id}', [ArtistController::class, 'show']);
-
-    Route::post('/artists', [ArtistController::class, 'store']);
-
-    // POST instead of PUT because of multipart file uploads
-    Route::post('/artists/{id}', [ArtistController::class, 'update']);
-
-    Route::delete('/artists/{id}', [ArtistController::class, 'destroy']);
-});
+//Route::prefix('v1')->group(function () {
+//
+//    Route::get('/artists', [ArtistController::class, 'index']);
+//
+//    Route::get('/artists/{id}', [ArtistController::class, 'show']);
+//
+//    Route::post('/artists', [ArtistController::class, 'store']);
+//
+//    // POST instead of PUT because of multipart file uploads
+//    Route::post('/artists/{id}', [ArtistController::class, 'update']);
+//
+//    Route::delete('/artists/{id}', [ArtistController::class, 'destroy']);
+//});
 
 
 
@@ -85,34 +86,26 @@ Route::prefix('v1')->group(function () {
 Route::prefix('v1/auth')->group(function () {
 
     // Public
-    Route::post('/register', [
-        AuthController::class,
-        'register'
-    ]);
+    Route::post('/register', [AuthController::class, 'register']);
 
-    Route::post('/login', [
-        AuthController::class,
-        'login'
-    ]);
+    Route::post('/login', [AuthController::class, 'login']);
 
     // Protected
     Route::middleware('auth:api')->group(function () {
 
-        Route::get('/me', [
-            AuthController::class,
-            'me'
-        ]);
+        Route::get('/me', [AuthController::class, 'me']);
 
-        Route::post('/logout', [
-            AuthController::class,
-            'logout'
-        ]);
+        Route::post('/logout', [AuthController::class, 'logout']);
 
-        Route::post('/refresh', [
-            AuthController::class,
-            'refresh'
-        ]);
+        Route::post('/refresh', [AuthController::class, 'refresh']);
 
     });
+});
+Route::prefix('v1')->group(function () {
+
+    Route::get('/blogs', [BlogController::class, 'index']);
+
+    Route::get('/blogs/{slug}', [BlogController::class, 'show']);
+
 
 });

@@ -5,14 +5,12 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\BlogResource\Pages;
 use App\Models\Artist;
 use App\Models\Blog;
-use App\Models\BlogCategory;
+use App\Models\Client;
 use Filament\Forms;
 use Filament\Forms\Form;
-use Filament\Forms\Get;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Support\Str;
 
 class BlogResource extends Resource
 {
@@ -20,15 +18,11 @@ class BlogResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationLabel = 'Blog';
-
-
-
-    protected static ?int $navigationSort = 7;
+    protected static ?string $navigationLabel = 'Blogs';
 
     protected static ?string $modelLabel = 'Blog';
 
-    protected static ?string $pluralModelLabel = 'Blog';
+    protected static ?string $pluralModelLabel = 'Blogs';
 
     public static function form(Form $form): Form
     {
@@ -37,124 +31,35 @@ class BlogResource extends Resource
 
                 /*
                 |--------------------------------------------------------------------------
-                | Basic Information
+                | Blog Information
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Basic Information')
+                Forms\Components\Section::make('Blog Information')
                     ->schema([
 
-                        Forms\Components\TextInput::make('title')
-                            ->label('Title')
+                        Forms\Components\DatePicker::make('date')
+                            ->label('Date')
                             ->required()
-                            ->maxLength(255)
-                            ->live(onBlur: true)
-                            ->afterStateUpdated(function (
-                                Get $get,
-                                Forms\Set $set,
-                                ?string $state
-                            ) {
-                                if (blank($get('slug'))) {
-                                    $set('slug', Str::slug($state ?? ''));
-                                }
-                            }),
+                            ->native(false),
 
-                        Forms\Components\TextInput::make('slug')
-                            ->label('Slug')
-                            ->required()
-                            ->unique(
-                                table: 'blogs',
-                                column: 'slug',
-                                ignoreRecord: true
-                            )
-                            ->maxLength(255),
+                        Forms\Components\TextInput::make('reading_time')
+                            ->label('Reading Time')
+                            ->placeholder('5 min')
+                            ->maxLength(100),
 
-                        Forms\Components\Select::make('category_id')
-                            ->label('Category')
-                            ->relationship(
-                                name: 'category',
-                                titleAttribute: 'name'
-                            )
-                            ->searchable()
-                            ->preload()
-                            ->native(false)
-
-                            ->createOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Category Name')
-                                    ->required()
-                                    ->maxLength(150)
-                                    ->live(onBlur: true),
-
-                                Forms\Components\TextInput::make('slug')
-                                    ->label('Slug')
-                                    ->required()
-                                    ->maxLength(180)
-                                    ->unique(
-                                        table: 'blog_categories',
-                                        column: 'slug'
-                                    ),
-
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Description')
-                                    ->rows(3)
-                                    ->maxLength(500),
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'draft' => 'Draft',
+                                'published' => 'Published',
                             ])
-
-                            ->createOptionUsing(function (array $data): int {
-                                $category = BlogCategory::create([
-                                    'name' => trim($data['name']),
-                                    'slug' => Str::slug($data['slug']),
-                                    'description' => $data['description'] ?? null,
-                                ]);
-
-                                return $category->getKey();
-                            })
-
-                            ->editOptionForm([
-                                Forms\Components\TextInput::make('name')
-                                    ->label('Category Name')
-                                    ->required()
-                                    ->maxLength(150),
-
-                                Forms\Components\TextInput::make('slug')
-                                    ->label('Slug')
-                                    ->required()
-                                    ->maxLength(180)
-                                    ->unique(
-                                        table: 'blog_categories',
-                                        column: 'slug',
-                                        ignoreRecord: true
-                                    ),
-
-                                Forms\Components\Textarea::make('description')
-                                    ->label('Description')
-                                    ->rows(3)
-                                    ->maxLength(500),
-                            ]),
-
-                        Forms\Components\Textarea::make('excerpt')
-                            ->label('Excerpt')
-                            ->rows(4)
-                            ->maxLength(1000)
-                            ->columnSpanFull(),
-
-                        Forms\Components\FileUpload::make('featured_image')
-                            ->label('Featured Image')
-                            ->image()
-                            ->disk('public')
-                            ->directory('blogs/featured')
-                            ->imageEditor()
-                            ->maxSize(5120)
-                            ->acceptedFileTypes([
-                                'image/jpeg',
-                                'image/png',
-                                'image/webp',
-                            ])
-                            ->columnSpanFull(),
+                            ->default('draft')
+                            ->required(),
 
                     ])
-                    ->columns(2),
+                    ->columns(3)
+                    ->columnSpanFull(),
 
                 /*
                 |--------------------------------------------------------------------------
@@ -166,189 +71,206 @@ class BlogResource extends Resource
                     ->schema([
 
                         Forms\Components\Select::make('author_type')
-                            ->label('Published By')
+                            ->label('Author')
                             ->options([
-                                'website' => 'Wachaar Website',
-                                'artist' => 'Artist',
+                                'wachaar' => 'Wachaar',
+                                Artist::class => 'Artist',
                             ])
-                            ->default('website')
-                            ->required()
                             ->live()
-                            ->native(false),
+                            ->required()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                $set('author_id', null);
+                            }),
 
                         Forms\Components\Select::make('author_id')
-                            ->label('Artist')
-                            ->options(function () {
-                                return Artist::query()
-                                    ->orderBy('first_name')
-                                    ->orderBy('last_name')
-                                    ->get()
-                                    ->mapWithKeys(function (Artist $artist) {
-                                        return [
-                                            $artist->id =>
-                                                trim(
-                                                    $artist->first_name .
-                                                    ' ' .
-                                                    $artist->last_name
-                                                ),
-                                        ];
-                                    });
-                            })
+                            ->label('Author Name')
                             ->searchable()
                             ->preload()
-                            ->native(false)
-                            ->visible(fn (Get $get): bool =>
-                                $get('author_type') === 'artist'
-                            )
-                            ->required(fn (Get $get): bool =>
-                                $get('author_type') === 'artist'
-                            ),
+                            ->required(fn (callable $get) => $get('author_type') === Artist::class)
+                            ->visible(fn (callable $get) => $get('author_type') === Artist::class)
+                            ->options(function (callable $get) {
+
+                                $type = $get('author_type');
+
+                                if ($type !== Artist::class) {
+                                    return [];
+                                }
+
+                                return Artist::query()
+                                    ->get()
+                                    ->mapWithKeys(function ($artist) {
+
+                                        $name = trim(
+                                            ($artist->name ?? '') . ' ' .
+                                            ($artist->family ?? '')
+                                        );
+
+                                        return [
+                                            $artist->id => $name ?: 'Artist #' . $artist->id,
+                                        ];
+                                    })
+                                    ->toArray();
+                            }),
 
                     ])
-                    ->columns(2),
-
+                    ->columns(2)
+                    ->columnSpanFull(),
                 /*
                 |--------------------------------------------------------------------------
-                | Publishing
+                | Blog Images
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Publishing')
+                Forms\Components\Section::make('Blog Images')
                     ->schema([
 
-                        Forms\Components\Select::make('status')
-                            ->label('Status')
-                            ->options([
-                                'draft' => 'Draft',
-                                'published' => 'Published',
+                        Forms\Components\FileUpload::make('image_1')
+                            ->label('Image 1')
+                            ->image()
+                            ->disk('api_public')
+                            ->directory('blogs')
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
                             ])
-                            ->default('draft')
-                            ->required()
-                            ->native(false),
+                            ->maxSize(5120)
+                            ->imagePreviewHeight('300')
+                            ->downloadable()
+                            ->openable(),
 
-                        Forms\Components\DateTimePicker::make('published_at')
-                            ->label('Published At')
-                            ->seconds(false),
-
-                        Forms\Components\TextInput::make('reading_time')
-                            ->label('Reading Time')
-                            ->numeric()
-                            ->minValue(1)
-                            ->suffix('min'),
+                        Forms\Components\FileUpload::make('image_2')
+                            ->label('Image 2')
+                            ->image()
+                            ->disk('api_public')
+                            ->directory('blogs')
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
+                            ])
+                            ->maxSize(5120)
+                            ->imagePreviewHeight('300')
+                            ->downloadable()
+                            ->openable(),
 
                     ])
-                    ->columns(3),
+                    ->columns(2)
+                    ->columnSpanFull(),
 
                 /*
                 |--------------------------------------------------------------------------
-                | Article Content
+                | Translations
                 |--------------------------------------------------------------------------
                 */
 
-                Forms\Components\Section::make('Article Content')
-                    ->schema([
+                Forms\Components\Tabs::make('Translations')
+                    ->tabs([
 
-                        Forms\Components\RichEditor::make('content')
-                            ->label('Content')
-                            ->toolbarButtons([
-                                'bold',
-                                'italic',
-                                'underline',
-                                'strike',
-                                'link',
-                                'blockquote',
-                                'bulletList',
-                                'orderedList',
-                                'h2',
-                                'h3',
-                                'undo',
-                                'redo',
-                            ])
-                            ->columnSpanFull(),
+                        /*
+                        |--------------------------------------------------------------------------
+                        | Persian
+                        |--------------------------------------------------------------------------
+                        */
 
-                    ]),
-
-                /*
-                |--------------------------------------------------------------------------
-                | Blog Gallery
-                |--------------------------------------------------------------------------
-                */
-
-                Forms\Components\Section::make('Blog Gallery')
-                    ->schema([
-
-                        Forms\Components\Repeater::make('images')
-                            ->relationship('images')
-                            ->label('Gallery Images')
+                        Forms\Components\Tabs\Tab::make('فارسی')
                             ->schema([
 
-                                Forms\Components\FileUpload::make('image')
-                                    ->label('Image')
-                                    ->image()
-                                    ->disk('public')
-                                    ->directory('blogs/gallery')
-                                    ->imageEditor()
-                                    ->maxSize(5120)
-                                    ->acceptedFileTypes([
-                                        'image/jpeg',
-                                        'image/png',
-                                        'image/webp',
-                                    ])
-                                    ->required()
+                                Forms\Components\TextInput::make(
+                                    'translation_fa.title_1'
+                                )
+                                    ->label('عنوان ۱')
+                                    ->maxLength(255),
+
+                                Forms\Components\Textarea::make(
+                                    'translation_fa.description_1'
+                                )
+                                    ->label('توضیحات ۱')
+                                    ->rows(7)
                                     ->columnSpanFull(),
 
-                                Forms\Components\Hidden::make('sort_order')
-                                    ->default(0),
+                                Forms\Components\TextInput::make(
+                                    'translation_fa.title_2'
+                                )
+                                    ->label('عنوان ۲')
+                                    ->maxLength(255),
+
+                                Forms\Components\Textarea::make(
+                                    'translation_fa.description_2'
+                                )
+                                    ->label('توضیحات ۲')
+                                    ->rows(7)
+                                    ->columnSpanFull(),
+
+                                Forms\Components\TextInput::make(
+                                    'translation_fa.title_3'
+                                )
+                                    ->label('عنوان ۳')
+                                    ->maxLength(255),
+
+                                Forms\Components\Textarea::make(
+                                    'translation_fa.description_3'
+                                )
+                                    ->label('توضیحات ۳')
+                                    ->rows(7)
+                                    ->columnSpanFull(),
 
                             ])
-                            ->reorderable('sort_order')
-                            ->collapsible()
-                            ->cloneable()
-                            ->itemLabel(
-                                fn (array $state): ?string =>
-                                isset($state['image'])
-                                    ? basename($state['image'])
-                                    : 'Gallery Image'
-                            )
-                            ->defaultItems(0)
-                            ->columnSpanFull(),
+                            ->columns(2),
 
-                    ]),
+                        /*
+                        |--------------------------------------------------------------------------
+                        | English
+                        |--------------------------------------------------------------------------
+                        */
 
-                /*
-                |--------------------------------------------------------------------------
-                | SEO
-                |--------------------------------------------------------------------------
-                */
+                        Forms\Components\Tabs\Tab::make('English')
+                            ->schema([
 
-                Forms\Components\Section::make('SEO')
-                    ->schema([
+                                Forms\Components\TextInput::make(
+                                    'translation_en.title_1'
+                                )
+                                    ->label('Title 1')
+                                    ->maxLength(255),
 
-                        Forms\Components\TextInput::make('meta_title')
-                            ->label('Meta Title')
-                            ->maxLength(255)
-                            ->columnSpanFull(),
+                                Forms\Components\Textarea::make(
+                                    'translation_en.description_1'
+                                )
+                                    ->label('Description 1')
+                                    ->rows(7)
+                                    ->columnSpanFull(),
 
-                        Forms\Components\Textarea::make('meta_description')
-                            ->label('Meta Description')
-                            ->rows(3)
-                            ->maxLength(500)
-                            ->columnSpanFull(),
+                                Forms\Components\TextInput::make(
+                                    'translation_en.title_2'
+                                )
+                                    ->label('Title 2')
+                                    ->maxLength(255),
 
-                        Forms\Components\Textarea::make('meta_keywords')
-                            ->label('Meta Keywords')
-                            ->rows(2)
-                            ->maxLength(1000)
-                            ->columnSpanFull(),
+                                Forms\Components\Textarea::make(
+                                    'translation_en.description_2'
+                                )
+                                    ->label('Description 2')
+                                    ->rows(7)
+                                    ->columnSpanFull(),
 
-                        Forms\Components\TextInput::make('canonical_url')
-                            ->label('Canonical URL')
-                            ->url()
-                            ->maxLength(500)
-                            ->columnSpanFull(),
+                                Forms\Components\TextInput::make(
+                                    'translation_en.title_3'
+                                )
+                                    ->label('Title 3')
+                                    ->maxLength(255),
+
+                                Forms\Components\Textarea::make(
+                                    'translation_en.description_3'
+                                )
+                                    ->label('Description 3')
+                                    ->rows(7)
+                                    ->columnSpanFull(),
+
+                            ])
+                            ->columns(2),
 
                     ])
-                    ->columns(2),
+                    ->columnSpanFull(),
 
             ]);
     }
@@ -358,70 +280,48 @@ class BlogResource extends Resource
         return $table
             ->columns([
 
-                Tables\Columns\ImageColumn::make('featured_image')
+                Tables\Columns\ImageColumn::make('image_1')
                     ->label('Image')
-                    ->disk('public')
+                    ->disk('api_public')
                     ->square(),
 
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Title')
-                    ->searchable()
-                    ->sortable()
-                    ->limit(40),
-
-                Tables\Columns\TextColumn::make('category.name')
-                    ->label('Category')
-                    ->searchable()
+                Tables\Columns\TextColumn::make('id')
+                    ->label('ID')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('author_name')
-                    ->label('Author')
-                    ->state(fn (Blog $record): string =>
-                    $record->author_name
-                    ),
+                Tables\Columns\TextColumn::make('date')
+                    ->label('Date')
+                    ->date('Y-m-d')
+                    ->sortable(),
 
-                Tables\Columns\BadgeColumn::make('status')
+                Tables\Columns\TextColumn::make('reading_time')
+                    ->label('Reading Time')
+                    ->searchable(),
+
+                Tables\Columns\TextColumn::make('author_type')
+                    ->label('Author Type')
+                    ->formatStateUsing(function ($state) {
+                        return match ($state) {
+                            Artist::class => 'Artist',
+                            Client::class => 'Client',
+                            default => $state,
+                        };
+                    }),
+
+                Tables\Columns\TextColumn::make('status')
                     ->label('Status')
-                    ->colors([
-                        'warning' => 'draft',
-                        'success' => 'published',
-                    ]),
-
-                Tables\Columns\TextColumn::make('published_at')
-                    ->label('Published At')
-                    ->dateTime('Y-m-d H:i')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('views')
-                    ->label('Views')
-                    ->numeric()
-                    ->sortable(),
+                    ->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'published' => 'success',
+                        'draft' => 'warning',
+                        default => 'gray',
+                    }),
 
                 Tables\Columns\TextColumn::make('created_at')
-                    ->label('Created At')
-                    ->dateTime('Y-m-d H:i')
+                    ->label('Created')
+                    ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-
-            ])
-            ->filters([
-
-                Tables\Filters\SelectFilter::make('status')
-                    ->options([
-                        'draft' => 'Draft',
-                        'published' => 'Published',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('author_type')
-                    ->label('Published By')
-                    ->options([
-                        'website' => 'Wachaar Website',
-                        'artist' => 'Artist',
-                    ]),
-
-                Tables\Filters\SelectFilter::make('category_id')
-                    ->label('Category')
-                    ->relationship('category', 'name'),
 
             ])
             ->actions([
@@ -433,7 +333,7 @@ class BlogResource extends Resource
                     Tables\Actions\DeleteBulkAction::make(),
                 ]),
             ])
-            ->defaultSort('created_at', 'desc');
+            ->defaultSort('date', 'desc');
     }
 
     public static function getRelations(): array
