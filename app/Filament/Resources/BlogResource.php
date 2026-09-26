@@ -18,11 +18,11 @@ class BlogResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-document-text';
 
-    protected static ?string $navigationLabel = 'Blogs';
+    protected static ?string $navigationLabel = 'وبلاگ';
 
-    protected static ?string $modelLabel = 'Blog';
+    protected static ?string $modelLabel = 'وبلاگ';
 
-    protected static ?string $pluralModelLabel = 'Blogs';
+    protected static ?string $pluralModelLabel = 'وبلاگ';
 
     public static function form(Form $form): Form
     {
@@ -280,26 +280,24 @@ class BlogResource extends Resource
         return $table
             ->columns([
 
-                Tables\Columns\ImageColumn::make('image_1')
-                    ->label('Image')
-                    ->disk('api_public')
-                    ->square(),
+
 
                 Tables\Columns\TextColumn::make('id')
-                    ->label('ID')
+                    ->label('شناسه')
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('translations.title')
+                    ->label('موضوع')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('date')
-                    ->label('Date')
+                    ->label('تاریخ')
                     ->date('Y-m-d')
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('reading_time')
-                    ->label('Reading Time')
-                    ->searchable(),
+
 
                 Tables\Columns\TextColumn::make('author_type')
-                    ->label('Author Type')
+                    ->label('نویسنده')
                     ->formatStateUsing(function ($state) {
                         return match ($state) {
                             Artist::class => 'Artist',
@@ -309,7 +307,7 @@ class BlogResource extends Resource
                     }),
 
                 Tables\Columns\TextColumn::make('status')
-                    ->label('Status')
+                    ->label('وضعیت')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'published' => 'success',

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Artist;
 use App\Models\Client;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -57,28 +59,84 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $client = Client::create([
-            'first_name' => trim($request->first_name),
-            'last_name' => trim($request->last_name),
-            'email' => strtolower(trim($request->email)),
-            'password' => Hash::make($request->password),
-            'role' => 'client',
-        ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Create Artist Account
+        |--------------------------------------------------------------------------
+        */
+
+        $client = DB::transaction(function () use ($request) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Client
+            |--------------------------------------------------------------------------
+            */
+
+            $client = Client::create([
+                'first_name' => trim($request->first_name),
+                'last_name' => trim($request->last_name),
+                'email' => strtolower(trim($request->email)),
+                'password' => Hash::make($request->password),
+
+                // Registration is currently only for Artists
+                'role' => 'artist',
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Create Artist Profile
+            |--------------------------------------------------------------------------
+            */
+
+            Artist::create([
+                'client_id' => $client->id,
+
+                'first_name' => trim($request->first_name),
+                'last_name' => trim($request->last_name),
+
+                'status' => 'draft',
+            ]);
+
+            return $client;
+        });
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Artist
+        |--------------------------------------------------------------------------
+        */
+
+        $client->load('artist');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create JWT
+        |--------------------------------------------------------------------------
+        */
 
         $token = JWTAuth::fromUser($client);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Response
+        |--------------------------------------------------------------------------
+        */
+
         return response()->json([
             'success' => true,
-            'message' => 'Registration successful.',
+            'message' => 'Artist registration successful.',
             'data' => [
                 'client' => $this->formatClient($client),
+
                 'token' => $token,
+
                 'token_type' => 'Bearer',
+
                 'expires_in' => auth('api')->factory()->getTTL() * 60,
             ],
         ], 201);
     }
-
     /*
     |--------------------------------------------------------------------------
     | Login
@@ -122,6 +180,8 @@ class AuthController extends Controller
         }
 
         $client = auth('api')->user();
+
+        $client->load('artist');
 
         return response()->json([
             'success' => true,
@@ -249,6 +309,14 @@ class AuthController extends Controller
                     ' ' .
                     $artist->last_name
                 ),
+
+                'status' => $artist->status,
+
+                'submitted_at' => $artist->submitted_at?->toISOString(),
+
+                'reviewed_at' => $artist->reviewed_at?->toISOString(),
+
+                'rejection_reason' => $artist->rejection_reason,
 
                 'profile_image' => $artist->profile_image
                     ? asset(

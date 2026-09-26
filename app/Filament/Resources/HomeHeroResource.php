@@ -14,7 +14,7 @@ class HomeHeroResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-photo';
 
-    protected static ?string $navigationLabel = 'Hero';
+    protected static ?string $navigationLabel = 'خانه ';
 
     protected static ?string $modelLabel = 'Hero';
 
@@ -32,7 +32,7 @@ class HomeHeroResource extends Resource
                     'video/mp4',
                     'video/webm',
                 ])
-                ->maxSize(51200)
+                ->maxSize(512000)
                 ->downloadable()
                 ->openable()
                 ->nullable(),
@@ -47,7 +47,7 @@ class HomeHeroResource extends Resource
                     'image/png',
                     'image/webp',
                 ])
-                ->maxSize(5120)
+                ->maxSize(51200)
                 ->downloadable()
                 ->openable()
                 ->nullable(),
@@ -62,7 +62,7 @@ class HomeHeroResource extends Resource
                     'image/png',
                     'image/webp',
                 ])
-                ->maxSize(5120)
+                ->maxSize(51200)
                 ->downloadable()
                 ->openable()
                 ->nullable(),

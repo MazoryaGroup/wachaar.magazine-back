@@ -3,471 +3,280 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Artist;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Exception;
 
 class ArtistController extends Controller
 {
-    /**
-     * Get all artists
-     */
-    public function index()
+    /*
+    |--------------------------------------------------------------------------
+    | Get My Artist Profile
+    |--------------------------------------------------------------------------
+    */
+
+    public function profile(): JsonResponse
     {
-        try {
-            $artists = Artist::with('portfolios')
-                ->latest()
-                ->get();
+        $client = auth('api')->user();
 
+        if (!$client) {
             return response()->json([
-                'status' => true,
-                'statusCode' => 200,
-                'message' => 'Artists retrieved successfully.',
-                'data' => $artists->map(
-                    fn (Artist $artist) => $this->formatArtist($artist)
-                ),
-            ]);
-        } catch (Exception $e) {
-
-            Log::error('Artist index error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'statusCode' => 500,
-                'message' => 'Failed to retrieve artists.',
-            ], 500);
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
         }
+
+        if ($client->role !== 'artist') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only artists can access this profile.',
+            ], 403);
+        }
+
+        $artist = $client->artist;
+
+        if (!$artist) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artist profile not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artist profile fetched successfully.',
+            'data' => $this->formatArtist($artist),
+        ]);
     }
 
-    /**
-     * Get single artist
-     */
-    public function show(int $id)
+    /*
+    |--------------------------------------------------------------------------
+    | Update My Artist Profile
+    |--------------------------------------------------------------------------
+    */
+
+    public function updateProfile(Request $request): JsonResponse
     {
-        try {
-            $artist = Artist::with('portfolios')->find($id);
+        $client = auth('api')->user();
 
-            if (!$artist) {
-                return response()->json([
-                    'status' => false,
-                    'statusCode' => 404,
-                    'message' => 'Artist not found.',
-                ], 404);
-            }
-
+        if (!$client) {
             return response()->json([
-                'status' => true,
-                'statusCode' => 200,
-                'message' => 'Artist retrieved successfully.',
-                'data' => $this->formatArtist($artist),
-            ]);
-        } catch (Exception $e) {
-
-            Log::error('Artist show error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'statusCode' => 500,
-                'message' => 'Failed to retrieve artist.',
-            ], 500);
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
         }
-    }
 
-    /**
-     * Create artist
-     */
-    public function store(Request $request)
-    {
-        try {
-            $validated = $request->validate([
-                'first_name' => [
-                    'required',
-                    'string',
-                    'max:100',
-                ],
+        if ($client->role !== 'artist') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only artists can update this profile.',
+            ], 403);
+        }
 
-                'last_name' => [
-                    'required',
-                    'string',
-                    'max:100',
-                ],
+        $artist = $client->artist;
 
-                'profile_image' => [
-                    'nullable',
-                    'image',
-                    'mimes:jpg,jpeg,png,webp',
-                    'max:5120',
-                ],
+        if (!$artist) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artist profile not found.',
+            ], 404);
+        }
 
-                'facebook_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
+        $validated = $request->validate([
 
-                'instagram_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
+            'first_name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+            ],
 
-                'youtube_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
+            'last_name' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:100',
+            ],
 
-                'title_1' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
+            'profile_image' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:10240',
+            ],
 
-                'description_1' => [
-                    'nullable',
-                    'string',
-                    'max:10000',
-                ],
+            'facebook_url' => [
+                'sometimes',
+                'nullable',
+                'url',
+                'max:255',
+            ],
 
-                'title_2' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
+            'instagram_url' => [
+                'sometimes',
+                'nullable',
+                'url',
+                'max:255',
+            ],
 
-                'description_2' => [
-                    'nullable',
-                    'string',
-                    'max:10000',
-                ],
+            'youtube_url' => [
+                'sometimes',
+                'nullable',
+                'url',
+                'max:255',
+            ],
 
-                'portfolios' => [
-                    'nullable',
-                    'array',
-                ],
+            'title_1' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+            ],
 
-                'portfolios.*.type' => [
-                    'required_with:portfolios',
-                    'in:image,video',
-                ],
+            'description_1' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
 
-                'portfolios.*.file' => [
-                    'required_with:portfolios',
-                    'file',
-                    'max:102400',
-                ],
-            ]);
+            'title_2' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+            ],
 
-            $artist = new Artist();
+            'description_2' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+        ]);
 
+        /*
+        |--------------------------------------------------------------------------
+        | Basic Information
+        |--------------------------------------------------------------------------
+        */
+
+        if (array_key_exists('first_name', $validated)) {
             $artist->first_name = trim($validated['first_name']);
+        }
+
+        if (array_key_exists('last_name', $validated)) {
             $artist->last_name = trim($validated['last_name']);
-
-            $artist->facebook_url = $validated['facebook_url'] ?? null;
-            $artist->instagram_url = $validated['instagram_url'] ?? null;
-            $artist->youtube_url = $validated['youtube_url'] ?? null;
-
-            $artist->title_1 = $validated['title_1'] ?? null;
-            $artist->description_1 = $validated['description_1'] ?? null;
-
-            $artist->title_2 = $validated['title_2'] ?? null;
-            $artist->description_2 = $validated['description_2'] ?? null;
-
-            // Profile image
-            if ($request->hasFile('profile_image')) {
-                $artist->profile_image = $request
-                    ->file('profile_image')
-                    ->store('artists/profile', 'public');
-            }
-
-            $artist->save();
-
-            // Portfolio
-            if ($request->has('portfolios')) {
-
-                foreach ($request->input('portfolios', []) as $index => $portfolio) {
-
-                    if (!$request->hasFile("portfolios.$index.file")) {
-                        continue;
-                    }
-
-                    $file = $request->file("portfolios.$index.file");
-
-                    $type = $portfolio['type'] ?? null;
-
-                    if ($type === 'image') {
-
-                        $request->validate([
-                            "portfolios.$index.file" => [
-                                'image',
-                                'mimes:jpg,jpeg,png,webp',
-                                'max:102400',
-                            ],
-                        ]);
-
-                        $path = $file->store(
-                            'artists/portfolio/images',
-                            'public'
-                        );
-
-                    } elseif ($type === 'video') {
-
-                        $request->validate([
-                            "portfolios.$index.file" => [
-                                'mimetypes:video/mp4,video/webm,video/quicktime',
-                                'max:102400',
-                            ],
-                        ]);
-
-                        $path = $file->store(
-                            'artists/portfolio/videos',
-                            'public'
-                        );
-
-                    } else {
-                        continue;
-                    }
-
-                    $artist->portfolios()->create([
-                        'type' => $type,
-                        'file' => $path,
-                        'sort_order' => $portfolio['sort_order'] ?? $index,
-                    ]);
-                }
-            }
-
-            $artist->load('portfolios');
-
-            return response()->json([
-                'status' => true,
-                'statusCode' => 201,
-                'message' => 'Artist created successfully.',
-                'data' => $this->formatArtist($artist),
-            ], 201);
-
-        } catch (Exception $e) {
-
-            Log::error('Artist store error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'statusCode' => 500,
-                'message' => 'Failed to create artist.',
-                'error' => $e->getMessage(),
-            ], 500);
         }
-    }
 
-    /**
-     * Update artist
-     *
-     * POST is used because multipart/form-data
-     * is more reliable for file uploads.
-     */
-    public function update(Request $request, int $id)
-    {
-        try {
-            $artist = Artist::with('portfolios')->find($id);
+        /*
+        |--------------------------------------------------------------------------
+        | Social Media
+        |--------------------------------------------------------------------------
+        */
 
-            if (!$artist) {
-                return response()->json([
-                    'status' => false,
-                    'statusCode' => 404,
-                    'message' => 'Artist not found.',
-                ], 404);
-            }
-
-            $validated = $request->validate([
-                'first_name' => [
-                    'sometimes',
-                    'required',
-                    'string',
-                    'max:100',
-                ],
-
-                'last_name' => [
-                    'sometimes',
-                    'required',
-                    'string',
-                    'max:100',
-                ],
-
-                'profile_image' => [
-                    'nullable',
-                    'image',
-                    'mimes:jpg,jpeg,png,webp',
-                    'max:5120',
-                ],
-
-                'facebook_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
-
-                'instagram_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
-
-                'youtube_url' => [
-                    'nullable',
-                    'url',
-                    'max:500',
-                ],
-
-                'title_1' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
-
-                'description_1' => [
-                    'nullable',
-                    'string',
-                    'max:10000',
-                ],
-
-                'title_2' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
-
-                'description_2' => [
-                    'nullable',
-                    'string',
-                    'max:10000',
-                ],
-            ]);
-
-            foreach ([
-                         'first_name',
-                         'last_name',
-                         'facebook_url',
-                         'instagram_url',
-                         'youtube_url',
-                         'title_1',
-                         'description_1',
-                         'title_2',
-                         'description_2',
-                     ] as $field) {
-
-                if (array_key_exists($field, $validated)) {
-                    $artist->{$field} = is_string($validated[$field])
-                        ? trim($validated[$field])
-                        : $validated[$field];
-                }
-            }
-
-            // Replace profile image
-            if ($request->hasFile('profile_image')) {
-
-                if ($artist->profile_image) {
-                    Storage::disk('public')->delete(
-                        $artist->profile_image
-                    );
-                }
-
-                $artist->profile_image = $request
-                    ->file('profile_image')
-                    ->store('artists/profile', 'public');
-            }
-
-            $artist->save();
-
-            $artist->load('portfolios');
-
-            return response()->json([
-                'status' => true,
-                'statusCode' => 200,
-                'message' => 'Artist updated successfully.',
-                'data' => $this->formatArtist($artist),
-            ]);
-
-        } catch (Exception $e) {
-
-            Log::error('Artist update error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'statusCode' => 500,
-                'message' => 'Failed to update artist.',
-                'error' => $e->getMessage(),
-            ], 500);
+        if (array_key_exists('facebook_url', $validated)) {
+            $artist->facebook_url = $validated['facebook_url'];
         }
-    }
 
-    /**
-     * Delete artist
-     */
-    public function destroy(int $id)
-    {
-        try {
-            $artist = Artist::with('portfolios')->find($id);
+        if (array_key_exists('instagram_url', $validated)) {
+            $artist->instagram_url = $validated['instagram_url'];
+        }
 
-            if (!$artist) {
-                return response()->json([
-                    'status' => false,
-                    'statusCode' => 404,
-                    'message' => 'Artist not found.',
-                ], 404);
-            }
+        if (array_key_exists('youtube_url', $validated)) {
+            $artist->youtube_url = $validated['youtube_url'];
+        }
 
-            // Delete profile image
+        /*
+        |--------------------------------------------------------------------------
+        | Profile Content
+        |--------------------------------------------------------------------------
+        */
+
+        if (array_key_exists('title_1', $validated)) {
+            $artist->title_1 = $validated['title_1'];
+        }
+
+        if (array_key_exists('description_1', $validated)) {
+            $artist->description_1 = $validated['description_1'];
+        }
+
+        if (array_key_exists('title_2', $validated)) {
+            $artist->title_2 = $validated['title_2'];
+        }
+
+        if (array_key_exists('description_2', $validated)) {
+            $artist->description_2 = $validated['description_2'];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Profile Image
+        |--------------------------------------------------------------------------
+        */
+
+        if ($request->hasFile('profile_image')) {
+
             if ($artist->profile_image) {
                 Storage::disk('public')->delete(
                     $artist->profile_image
                 );
             }
 
-            // Delete portfolio files
-            foreach ($artist->portfolios as $portfolio) {
-
-                if ($portfolio->file) {
-                    Storage::disk('public')->delete(
-                        $portfolio->file
-                    );
-                }
-            }
-
-            // Cascade deletes portfolio records
-            $artist->delete();
-
-            return response()->json([
-                'status' => true,
-                'statusCode' => 200,
-                'message' => 'Artist deleted successfully.',
-            ]);
-
-        } catch (Exception $e) {
-
-            Log::error('Artist destroy error: ' . $e->getMessage());
-
-            return response()->json([
-                'status' => false,
-                'statusCode' => 500,
-                'message' => 'Failed to delete artist.',
-                'error' => $e->getMessage(),
-            ], 500);
+            $artist->profile_image = $request
+                ->file('profile_image')
+                ->store('artists', 'public');
         }
+
+        $artist->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Important:
+        | If a rejected artist edits the profile,
+        | keep the rejection state until they explicitly resubmit.
+        |
+        | If an approved artist edits the profile,
+        | send it back to pending review.
+        |--------------------------------------------------------------------------
+        */
+
+        if ($artist->status === 'approved') {
+            $artist->status = 'pending';
+            $artist->submitted_at = now();
+            $artist->reviewed_at = null;
+            $artist->rejection_reason = null;
+
+            $artist->save();
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artist profile updated successfully.',
+            'data' => $this->formatArtist($artist),
+        ]);
     }
 
-    /**
-     * Format artist response
-     */
-    private function formatArtist(Artist $artist): array
+    /*
+    |--------------------------------------------------------------------------
+    | Format Artist
+    |--------------------------------------------------------------------------
+    */
+
+    private function formatArtist($artist): array
     {
         return [
             'id' => $artist->id,
 
+            'client_id' => $artist->client_id,
+
             'first_name' => $artist->first_name,
+
             'last_name' => $artist->last_name,
+
             'name' => trim(
-                $artist->first_name . ' ' . $artist->last_name
+                $artist->first_name .
+                ' ' .
+                $artist->last_name
             ),
 
             'profile_image' => $artist->profile_image
@@ -476,38 +285,31 @@ class ArtistController extends Controller
                 )
                 : null,
 
-            'social' => [
-                'facebook' => $artist->facebook_url,
-                'instagram' => $artist->instagram_url,
-                'youtube' => $artist->youtube_url,
-            ],
+            'facebook_url' => $artist->facebook_url,
 
-            'content_1' => [
-                'title' => $artist->title_1,
-                'description' => $artist->description_1,
-            ],
+            'instagram_url' => $artist->instagram_url,
 
-            'content_2' => [
-                'title' => $artist->title_2,
-                'description' => $artist->description_2,
-            ],
+            'youtube_url' => $artist->youtube_url,
 
-            'portfolio' => $artist->portfolios
-                ->map(function ($portfolio) {
-                    return [
-                        'id' => $portfolio->id,
-                        'type' => $portfolio->type,
-                        'file' => Storage::disk('public')->url(
-                            $portfolio->file
-                        ),
-                        'sort_order' => $portfolio->sort_order,
-                    ];
-                })
-                ->values()
-                ->toArray(),
+            'title_1' => $artist->title_1,
 
-            'created_at' => $artist->created_at,
-            'updated_at' => $artist->updated_at,
+            'description_1' => $artist->description_1,
+
+            'title_2' => $artist->title_2,
+
+            'description_2' => $artist->description_2,
+
+            'status' => $artist->status,
+
+            'submitted_at' => $artist->submitted_at?->toISOString(),
+
+            'reviewed_at' => $artist->reviewed_at?->toISOString(),
+
+            'rejection_reason' => $artist->rejection_reason,
+
+            'created_at' => $artist->created_at?->toISOString(),
+
+            'updated_at' => $artist->updated_at?->toISOString(),
         ];
     }
 }

@@ -16,11 +16,11 @@ class MagazineResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-book-open';
 
-    protected static ?string $navigationLabel = 'Magazine';
+    protected static ?string $navigationLabel = 'مجله';
 
-    protected static ?string $modelLabel = 'Magazine';
+    protected static ?string $modelLabel = 'مجله';
 
-    protected static ?string $pluralModelLabel = 'Magazines';
+    protected static ?string $pluralModelLabel = 'مجله';
 
     public static function form(Form $form): Form
     {
@@ -176,29 +176,21 @@ class MagazineResource extends Resource
         return $table
             ->columns([
 
-                Tables\Columns\ImageColumn::make('cover_image')
-                    ->label('Cover')
-                    ->disk('public')
-                    ->square(),
 
-                Tables\Columns\TextColumn::make('title')
-                    ->label('Title')
+
+                Tables\Columns\TextColumn::make('translations.title')
+                    ->label('موضوع')
                     ->searchable()
+                    ->sortable(),
+                Tables\Columns\TextColumn::make('pages_count')
+                    ->label('تعداد صفحه')
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('published_at')
-                    ->label('Date')
+                    ->label('تاریخ')
                     ->date()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('pages_count')
-                    ->label('Pages')
-                    ->sortable(),
-
-                Tables\Columns\TextColumn::make('hashtags.name')
-                    ->label('Hashtags')
-                    ->badge()
-                    ->separator(','),
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')

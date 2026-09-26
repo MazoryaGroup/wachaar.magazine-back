@@ -5,10 +5,9 @@ namespace App\Models;
 use App\Models\Artist;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
-
 
 class Client extends Authenticatable implements JWTSubject, MustVerifyEmail
 {
@@ -22,7 +21,6 @@ class Client extends Authenticatable implements JWTSubject, MustVerifyEmail
         'email',
         'password',
         'role',
-        'artist_id',
         'email_verified_at',
     ];
 
@@ -60,11 +58,11 @@ class Client extends Authenticatable implements JWTSubject, MustVerifyEmail
     |--------------------------------------------------------------------------
     */
 
-    public function artist(): BelongsTo
+    public function artist(): HasOne
     {
-        return $this->belongsTo(
+        return $this->hasOne(
             Artist::class,
-            'artist_id'
+            'client_id'
         );
     }
 

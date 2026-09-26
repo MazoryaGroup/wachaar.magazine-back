@@ -16,11 +16,11 @@ class ProjectResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
-    protected static ?string $navigationLabel = 'Projects';
+    protected static ?string $navigationLabel = 'پروژه  ';
 
-    protected static ?string $modelLabel = 'Project';
+    protected static ?string $modelLabel = 'پروژه';
 
-    protected static ?string $pluralModelLabel = 'Projects';
+    protected static ?string $pluralModelLabel = 'پروژه ها';
 
     public static function form(Form $form): Form
     {
@@ -286,7 +286,7 @@ class ProjectResource extends Resource
             ->columns([
 
                 Tables\Columns\TextColumn::make('translations.title')
-                    ->label('Title')
+                    ->label('موضوع')
                     ->searchable()
                     ->sortable(),
 
@@ -296,7 +296,7 @@ class ProjectResource extends Resource
                     ->sortable(),
 
                 Tables\Columns\TextColumn::make('type')
-                    ->label('Type')
+                    ->label('نوع')
                     ->badge(),
 
                 Tables\Columns\IconColumn::make('is_marked')
@@ -304,7 +304,7 @@ class ProjectResource extends Resource
                     ->boolean(),
 
                 Tables\Columns\TextColumn::make('project_date')
-                    ->label('Date')
+                    ->label('تاریخ پروژه')
                     ->date()
                     ->sortable(),
 

@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ArtistController;
 use App\Http\Controllers\Api\BlogController;
+use App\Http\Controllers\Api\ArtistPortfolioController;
 
 
 
@@ -101,6 +102,54 @@ Route::prefix('v1/auth')->group(function () {
 
     });
 });
+
+
+/*
+|--------------------------------------------------------------------------
+| Artist
+|--------------------------------------------------------------------------
+*/
+
+Route::middleware('auth:api')->prefix('v1/artist')->group(function () {
+
+    Route::get('/profile', [
+        ArtistController::class,
+        'profile',
+    ]);
+
+    Route::put('/profile', [
+        ArtistController::class,
+        'updateProfile',
+    ]);
+    /*
+      |--------------------------------------------------------------------------
+      | Portfolio
+      |--------------------------------------------------------------------------
+      */
+
+    Route::get('/portfolio', [
+        ArtistPortfolioController::class,
+        'index',
+    ]);
+
+    Route::post('/portfolio', [
+        ArtistPortfolioController::class,
+        'store',
+    ]);
+
+    Route::put('/portfolio/{id}', [
+        ArtistPortfolioController::class,
+        'update',
+    ]);
+
+    Route::delete('/portfolio/{id}', [
+        ArtistPortfolioController::class,
+        'destroy',
+    ]);
+
+});
+
+
 Route::prefix('v1')->group(function () {
 
     Route::get('/blogs', [BlogController::class, 'index']);

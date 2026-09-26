@@ -16,11 +16,11 @@ class ServiceResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-wrench-screwdriver';
 
-    protected static ?string $navigationLabel = 'Services';
+    protected static ?string $navigationLabel = 'سرویس ';
 
-    protected static ?string $modelLabel = 'Service';
+    protected static ?string $modelLabel = 'سرویس';
 
-    protected static ?string $pluralModelLabel = 'Services';
+    protected static ?string $pluralModelLabel = 'سرویس ها';
 
     public static function form(Form $form): Form
     {
@@ -206,14 +206,15 @@ class ServiceResource extends Resource
         return $table
             ->columns([
 
-                Tables\Columns\ImageColumn::make('image_1')
-                    ->label('Image')
-                    ->disk('api_public')
-                    ->square(),
+
 
                 Tables\Columns\TextColumn::make('id')
-                    ->label('ID')
+                    ->label('شناسه')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('translations.title')
+                    ->label('موضوع')
+                    ->sortable(),
+
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label('Created')
