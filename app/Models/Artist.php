@@ -53,7 +53,10 @@ class Artist extends Model
     }
 
     /**
-     * Portfolio های Artist
+     * Portfolio های قدیمی Artist
+     *
+     * فعلاً نگه داشته می‌شود تا بعد از تکمیل
+     * سیستم جدید Project تصمیم بگیریم حذف شود.
      */
     public function portfolios(): HasMany
     {
@@ -61,5 +64,16 @@ class Artist extends Model
             ArtistPortfolio::class,
             'artist_id'
         )->orderBy('sort_order');
+    }
+
+    /**
+     * پروژه‌های این Artist
+     */
+    public function projects(): HasMany
+    {
+        return $this->hasMany(
+            Project::class,
+            'owner_id'
+        )->where('owner_type', 'artist');
     }
 }

@@ -22,7 +22,7 @@
 <?php $attributes = $attributes->except(collect($constructor->getParameters())->map->getName()->all()); ?>
 <?php endif; ?>
 <?php $component->withAttributes(['field' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($field),'inline-label-vertical-alignment' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($inlineLabelVerticalAlignment)]); ?>
- <?php $__env->slot('labelPrefix', null, []); ?> <?php echo e($labelPrefix); ?> <?php $__env->endSlot(); ?>
+
 <?php echo e($slot ?? ""); ?>
 
  <?php echo $__env->renderComponent(); ?>
@@ -34,4 +34,4 @@
 <?php if (isset($__componentOriginala86dcd7e3fb4428c61bb5e13aa161d28)): ?>
 <?php $component = $__componentOriginala86dcd7e3fb4428c61bb5e13aa161d28; ?>
 <?php unset($__componentOriginala86dcd7e3fb4428c61bb5e13aa161d28); ?>
-<?php endif; ?><?php /**PATH D:\xampp\htdocs\wachaar.magazine-back\storage\framework\views/757f78daea9a98869e27462aef14e4eb.blade.php ENDPATH**/ ?>
+<?php endif; ?><?php /**PATH D:\xampp\htdocs\wachaar.magazine-back\storage\framework\views/eeb545c356a817f56ecf5e68001e6e4d.blade.php ENDPATH**/ ?>

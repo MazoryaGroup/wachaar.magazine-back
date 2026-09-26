@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\homeherocontroller;
+use App\Http\Controllers\Api\HomeHeroController;
 use App\Http\Controllers\Api\MagazineController;
 use App\Http\Controllers\Api\WaitingListController;
 use App\Http\Controllers\Api\ContactController;
@@ -67,19 +67,19 @@ Route::prefix('v1')->group(function () {
 
 
 
-//Route::prefix('v1')->group(function () {
-//
-//    Route::get('/artists', [ArtistController::class, 'index']);
-//
-//    Route::get('/artists/{id}', [ArtistController::class, 'show']);
-//
-//    Route::post('/artists', [ArtistController::class, 'store']);
-//
-//    // POST instead of PUT because of multipart file uploads
-//    Route::post('/artists/{id}', [ArtistController::class, 'update']);
-//
-//    Route::delete('/artists/{id}', [ArtistController::class, 'destroy']);
-//});
+Route::prefix('v1')->group(function () {
+
+    Route::get('/artists', [ArtistController::class, 'index']);
+
+    Route::get('/artists/{id}', [ArtistController::class, 'show']);
+
+    Route::post('/artists', [ArtistController::class, 'store']);
+
+    // POST instead of PUT because of multipart file uploads
+    Route::post('/artists/{id}', [ArtistController::class, 'update']);
+
+    Route::delete('/artists/{id}', [ArtistController::class, 'destroy']);
+});
 
 
 
@@ -110,43 +110,25 @@ Route::prefix('v1/auth')->group(function () {
 |--------------------------------------------------------------------------
 */
 
+Route::get('/v1/artist/portfolio', [ArtistPortfolioController::class, 'index']);
+
 Route::middleware('auth:api')->prefix('v1/artist')->group(function () {
 
-    Route::get('/profile', [
-        ArtistController::class,
-        'profile',
-    ]);
+    Route::get('/profile', [ArtistController::class, 'profile']);
 
-    Route::put('/profile', [
-        ArtistController::class,
-        'updateProfile',
-    ]);
+    Route::put('/profile', [ArtistController::class, 'updateProfile']);
+
     /*
-      |--------------------------------------------------------------------------
-      | Portfolio
-      |--------------------------------------------------------------------------
-      */
+    |--------------------------------------------------------------------------
+    | Portfolio
+    |--------------------------------------------------------------------------
+    */
 
-    Route::get('/portfolio', [
-        ArtistPortfolioController::class,
-        'index',
-    ]);
+    Route::post('/portfolio', [ArtistPortfolioController::class, 'store']);
 
-    Route::post('/portfolio', [
-        ArtistPortfolioController::class,
-        'store',
-    ]);
+    Route::put('/portfolio/{id}', [ArtistPortfolioController::class, 'update']);
 
-    Route::put('/portfolio/{id}', [
-        ArtistPortfolioController::class,
-        'update',
-    ]);
-
-    Route::delete('/portfolio/{id}', [
-        ArtistPortfolioController::class,
-        'destroy',
-    ]);
-
+    Route::delete('/portfolio/{id}', [ArtistPortfolioController::class, 'destroy']);
 });
 
 

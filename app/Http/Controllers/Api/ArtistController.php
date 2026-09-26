@@ -3,12 +3,84 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Artist;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class ArtistController extends Controller
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Get All Artists
+    |--------------------------------------------------------------------------
+    | GET /api/v1/artists
+    |--------------------------------------------------------------------------
+    */
+
+    public function index(): JsonResponse
+    {
+        $artists = Artist::query()
+            ->select([
+                'id',
+                'first_name',
+                'last_name',
+            ])
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artists fetched successfully.',
+            'data' => $artists->map(function ($artist) {
+                return [
+                    'id' => $artist->id,
+                    'name' => trim(
+                        $artist->first_name . ' ' . $artist->last_name
+                    ),
+                ];
+            })->values(),
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Get Single Artist
+    |--------------------------------------------------------------------------
+    | GET /api/v1/artists/{id}
+    |--------------------------------------------------------------------------
+    */
+
+    public function show(int $id): JsonResponse
+    {
+        $artist = Artist::query()
+            ->select([
+                'id',
+                'first_name',
+                'last_name',
+            ])
+            ->find($id);
+
+        if (!$artist) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artist not found.',
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Artist fetched successfully.',
+            'data' => [
+                'id' => $artist->id,
+                'name' => trim(
+                    $artist->first_name . ' ' . $artist->last_name
+                ),
+            ],
+        ]);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Get My Artist Profile
@@ -227,16 +299,9 @@ class ArtistController extends Controller
                 ->store('artists', 'public');
         }
 
-        $artist->save();
-
         /*
         |--------------------------------------------------------------------------
-        | Important:
-        | If a rejected artist edits the profile,
-        | keep the rejection state until they explicitly resubmit.
-        |
-        | If an approved artist edits the profile,
-        | send it back to pending review.
+        | Artist Status
         |--------------------------------------------------------------------------
         */
 
@@ -245,9 +310,9 @@ class ArtistController extends Controller
             $artist->submitted_at = now();
             $artist->reviewed_at = null;
             $artist->rejection_reason = null;
-
-            $artist->save();
         }
+
+        $artist->save();
 
         return response()->json([
             'success' => true,
