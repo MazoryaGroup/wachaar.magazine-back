@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Project extends Model
@@ -34,6 +33,39 @@ class Project extends Model
         'submitted_at' => 'datetime',
         'reviewed_at' => 'datetime',
     ];
+
+    protected $appends = [
+        'cover_url',
+        'video_url',
+        'behind_the_scenes_video_url',
+    ];
+
+    /*
+    |--------------------------------------------------------------------------
+    | File URLs
+    |--------------------------------------------------------------------------
+    */
+
+    public function getCoverUrlAttribute(): ?string
+    {
+        return $this->cover
+            ? asset('storage/' . $this->cover)
+            : null;
+    }
+
+    public function getVideoUrlAttribute(): ?string
+    {
+        return $this->video
+            ? asset('storage/' . $this->video)
+            : null;
+    }
+
+    public function getBehindTheScenesVideoUrlAttribute(): ?string
+    {
+        return $this->behind_the_scenes_video
+            ? asset('storage/' . $this->behind_the_scenes_video)
+            : null;
+    }
 
     /*
     |--------------------------------------------------------------------------

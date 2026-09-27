@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\ServiceController;
 use App\Http\Controllers\Api\ArtistController;
 use App\Http\Controllers\Api\BlogController;
 use App\Http\Controllers\Api\ArtistPortfolioController;
+use App\Http\Controllers\Api\ArtistProjectController;
 
 
 
@@ -140,3 +141,23 @@ Route::prefix('v1')->group(function () {
 
 
 });
+Route::middleware('auth:api')
+    ->prefix('v1/artist')
+    ->group(function () {
+
+        Route::get('/projects', [ArtistProjectController::class, 'index']);
+
+        Route::post('/projects', [ArtistProjectController::class, 'store']);
+
+        Route::get('/projects/{id}', [ArtistProjectController::class, 'show']);
+
+        Route::put('/projects/{id}', [ArtistProjectController::class, 'update']);
+
+        Route::delete('/projects/{id}', [ArtistProjectController::class, 'destroy']);
+
+
+        Route::post(
+            '/projects/{id}/submit',
+            [ArtistProjectController::class, 'submit']
+        );
+    });

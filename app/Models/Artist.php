@@ -41,6 +41,17 @@ class Artist extends Model
         'reviewed_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'profile_image_url',
+    ];
+
+    public function getProfileImageUrlAttribute(): ?string
+    {
+        return $this->profile_image
+            ? asset('storage/' . $this->profile_image)
+            : null;
+    }
+
     /**
      * Client صاحب این Artist Profile
      */
@@ -54,9 +65,6 @@ class Artist extends Model
 
     /**
      * Portfolio های قدیمی Artist
-     *
-     * فعلاً نگه داشته می‌شود تا بعد از تکمیل
-     * سیستم جدید Project تصمیم بگیریم حذف شود.
      */
     public function portfolios(): HasMany
     {

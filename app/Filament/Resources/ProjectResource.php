@@ -52,6 +52,17 @@ class ProjectResource extends Resource
                             ])
                             ->searchable(),
 
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'draft' => 'در حال بررسی',
+                                'approved' => 'تأیید شده',
+                                'rejected' => 'عدم تأیید',
+                            ])
+                            ->default('pending')
+                            ->required()
+                            ->native(false),
+
                         Forms\Components\Toggle::make('is_marked')
                             ->label('Mark Project')
                             ->default(false)
@@ -302,6 +313,22 @@ class ProjectResource extends Resource
                 Tables\Columns\IconColumn::make('is_marked')
                     ->label('Marked')
                     ->boolean(),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'draft' => 'در حال بررسی',
+                        'approved' => 'تأیید شده',
+                        'rejected' => 'عدم تأیید',
+                        default => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'draft' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'gray',
+                    }),
+
 
                 Tables\Columns\TextColumn::make('project_date')
                     ->label('تاریخ پروژه')

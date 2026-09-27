@@ -269,6 +269,7 @@ class ProjectController extends Controller
             */
 
             if ($request->hasFile('video')) {
+
                 $project->video = $request
                     ->file('video')
                     ->store('projects/videos', 'public');
@@ -281,6 +282,7 @@ class ProjectController extends Controller
             */
 
             if ($request->hasFile('cover')) {
+
                 $project->cover = $request
                     ->file('cover')
                     ->store('projects/covers', 'public');
@@ -293,6 +295,7 @@ class ProjectController extends Controller
             */
 
             if ($request->hasFile('behind_the_scenes_video')) {
+
                 $project->behind_the_scenes_video = $request
                     ->file('behind_the_scenes_video')
                     ->store(
@@ -311,12 +314,26 @@ class ProjectController extends Controller
 
             $project->translations()->create([
                 'locale' => 'en',
+
                 'title' => $validated['translations']['en']['title'],
-                'subject' => $validated['translations']['en']['subject'] ?? null,
-                'description' => $validated['translations']['en']['description'] ?? null,
-                'project_description' => $validated['translations']['en']['project_description'] ?? null,
-                'campaign_description' => $validated['translations']['en']['campaign_description'] ?? null,
-                'project_cast' => $validated['translations']['en']['project_cast'] ?? null,
+
+                'subject' =>
+                    $validated['translations']['en']['subject'] ?? null,
+
+                'description' =>
+                    $validated['translations']['en']['description'] ?? null,
+
+                'project_description' =>
+                    $validated['translations']['en']['project_description']
+                    ?? null,
+
+                'campaign_description' =>
+                    $validated['translations']['en']['campaign_description']
+                    ?? null,
+
+                'project_cast' =>
+                    $validated['translations']['en']['project_cast']
+                    ?? null,
             ]);
 
             /*
@@ -327,12 +344,26 @@ class ProjectController extends Controller
 
             $project->translations()->create([
                 'locale' => 'fa',
+
                 'title' => $validated['translations']['fa']['title'],
-                'subject' => $validated['translations']['fa']['subject'] ?? null,
-                'description' => $validated['translations']['fa']['description'] ?? null,
-                'project_description' => $validated['translations']['fa']['project_description'] ?? null,
-                'campaign_description' => $validated['translations']['fa']['campaign_description'] ?? null,
-                'project_cast' => $validated['translations']['fa']['project_cast'] ?? null,
+
+                'subject' =>
+                    $validated['translations']['fa']['subject'] ?? null,
+
+                'description' =>
+                    $validated['translations']['fa']['description'] ?? null,
+
+                'project_description' =>
+                    $validated['translations']['fa']['project_description']
+                    ?? null,
+
+                'campaign_description' =>
+                    $validated['translations']['fa']['campaign_description']
+                    ?? null,
+
+                'project_cast' =>
+                    $validated['translations']['fa']['project_cast']
+                    ?? null,
             ]);
 
             /*
@@ -343,7 +374,10 @@ class ProjectController extends Controller
 
             if ($request->hasFile('campaign_images')) {
 
-                foreach ($request->file('campaign_images') as $index => $image) {
+                foreach (
+                    $request->file('campaign_images')
+                    as $index => $image
+                ) {
 
                     $path = $image->store(
                         'projects/campaign',
@@ -365,7 +399,10 @@ class ProjectController extends Controller
 
             if ($request->hasFile('images')) {
 
-                foreach ($request->file('images') as $index => $image) {
+                foreach (
+                    $request->file('images')
+                    as $index => $image
+                ) {
 
                     $path = $image->store(
                         'projects/images',
@@ -421,6 +458,7 @@ class ProjectController extends Controller
         ])->find($id);
 
         if (!$project) {
+
             return response()->json([
                 'status' => false,
                 'statusCode' => 404,
@@ -642,7 +680,8 @@ class ProjectController extends Controller
             if ($request->hasFile('video')) {
 
                 if ($project->video) {
-                    Storage::disk('public')->delete($project->video);
+                    Storage::disk('public')
+                        ->delete($project->video);
                 }
 
                 $project->video = $request
@@ -659,7 +698,8 @@ class ProjectController extends Controller
             if ($request->hasFile('cover')) {
 
                 if ($project->cover) {
-                    Storage::disk('public')->delete($project->cover);
+                    Storage::disk('public')
+                        ->delete($project->cover);
                 }
 
                 $project->cover = $request
@@ -676,6 +716,7 @@ class ProjectController extends Controller
             if ($request->hasFile('behind_the_scenes_video')) {
 
                 if ($project->behind_the_scenes_video) {
+
                     Storage::disk('public')->delete(
                         $project->behind_the_scenes_video
                     );
@@ -704,22 +745,28 @@ class ProjectController extends Controller
                         'locale' => 'en',
                     ],
                     [
-                        'title' => $validated['translations']['en']['title']
+                        'title' =>
+                            $validated['translations']['en']['title']
                             ?? null,
 
-                        'subject' => $validated['translations']['en']['subject']
+                        'subject' =>
+                            $validated['translations']['en']['subject']
                             ?? null,
 
-                        'description' => $validated['translations']['en']['description']
+                        'description' =>
+                            $validated['translations']['en']['description']
                             ?? null,
 
-                        'project_description' => $validated['translations']['en']['project_description']
+                        'project_description' =>
+                            $validated['translations']['en']['project_description']
                             ?? null,
 
-                        'campaign_description' => $validated['translations']['en']['campaign_description']
+                        'campaign_description' =>
+                            $validated['translations']['en']['campaign_description']
                             ?? null,
 
-                        'project_cast' => $validated['translations']['en']['project_cast']
+                        'project_cast' =>
+                            $validated['translations']['en']['project_cast']
                             ?? null,
                     ]
                 );
@@ -738,22 +785,28 @@ class ProjectController extends Controller
                         'locale' => 'fa',
                     ],
                     [
-                        'title' => $validated['translations']['fa']['title']
+                        'title' =>
+                            $validated['translations']['fa']['title']
                             ?? null,
 
-                        'subject' => $validated['translations']['fa']['subject']
+                        'subject' =>
+                            $validated['translations']['fa']['subject']
                             ?? null,
 
-                        'description' => $validated['translations']['fa']['description']
+                        'description' =>
+                            $validated['translations']['fa']['description']
                             ?? null,
 
-                        'project_description' => $validated['translations']['fa']['project_description']
+                        'project_description' =>
+                            $validated['translations']['fa']['project_description']
                             ?? null,
 
-                        'campaign_description' => $validated['translations']['fa']['campaign_description']
+                        'campaign_description' =>
+                            $validated['translations']['fa']['campaign_description']
                             ?? null,
 
-                        'project_cast' => $validated['translations']['fa']['project_cast']
+                        'project_cast' =>
+                            $validated['translations']['fa']['project_cast']
                             ?? null,
                     ]
                 );
@@ -784,7 +837,8 @@ class ProjectController extends Controller
 
                     $project->campaignImages()->create([
                         'image' => $path,
-                        'sort_order' => $lastOrder + $index + 1,
+                        'sort_order' =>
+                            $lastOrder + $index + 1,
                     ]);
                 }
             }
@@ -814,7 +868,8 @@ class ProjectController extends Controller
 
                     $project->images()->create([
                         'image' => $path,
-                        'sort_order' => $lastOrder + $index + 1,
+                        'sort_order' =>
+                            $lastOrder + $index + 1,
                     ]);
                 }
             }
@@ -861,6 +916,7 @@ class ProjectController extends Controller
         ])->find($id);
 
         if (!$project) {
+
             return response()->json([
                 'status' => false,
                 'statusCode' => 404,
@@ -877,14 +933,17 @@ class ProjectController extends Controller
             */
 
             if ($project->video) {
-                Storage::disk('public')->delete($project->video);
+                Storage::disk('public')
+                    ->delete($project->video);
             }
 
             if ($project->cover) {
-                Storage::disk('public')->delete($project->cover);
+                Storage::disk('public')
+                    ->delete($project->cover);
             }
 
             if ($project->behind_the_scenes_video) {
+
                 Storage::disk('public')->delete(
                     $project->behind_the_scenes_video
                 );
@@ -899,7 +958,8 @@ class ProjectController extends Controller
             foreach ($project->campaignImages as $image) {
 
                 if ($image->image) {
-                    Storage::disk('public')->delete($image->image);
+                    Storage::disk('public')
+                        ->delete($image->image);
                 }
             }
 
@@ -912,7 +972,8 @@ class ProjectController extends Controller
             foreach ($project->images as $image) {
 
                 if ($image->image) {
-                    Storage::disk('public')->delete($image->image);
+                    Storage::disk('public')
+                        ->delete($image->image);
                 }
             }
 
@@ -920,10 +981,6 @@ class ProjectController extends Controller
             |--------------------------------------------------------------------------
             | Delete Project
             |--------------------------------------------------------------------------
-            |
-            | project_translations will be deleted automatically
-            | because of ON DELETE CASCADE.
-            |
             */
 
             $project->delete();
@@ -959,6 +1016,7 @@ class ProjectController extends Controller
         Project $project,
         string $locale = 'en'
     ): array {
+
         $translation = $project->translations
             ->firstWhere('locale', $locale);
 
@@ -969,21 +1027,25 @@ class ProjectController extends Controller
         */
 
         if (!$translation && $locale !== 'en') {
+
             $translation = $project->translations
                 ->firstWhere('locale', 'en');
         }
 
         return [
+
             'id' => $project->id,
 
             'title' => $translation?->title,
 
             'video' => $project->video
-                ? Storage::disk('public')->url($project->video)
+                ? Storage::disk('public')
+                    ->url($project->video)
                 : null,
 
             'cover' => $project->cover
-                ? Storage::disk('public')->url($project->cover)
+                ? Storage::disk('public')
+                    ->url($project->cover)
                 : null,
 
             'description' => $translation?->description,
@@ -998,11 +1060,14 @@ class ProjectController extends Controller
 
             'type' => $project->type,
 
-            'project_description' => $translation?->project_description,
+            'project_description' =>
+                $translation?->project_description,
 
-            'campaign_description' => $translation?->campaign_description,
+            'campaign_description' =>
+                $translation?->campaign_description,
 
-            'project_cast' => $translation?->project_cast,
+            'project_cast' =>
+                $translation?->project_cast,
 
             'behind_the_scenes_video' =>
                 $project->behind_the_scenes_video
@@ -1013,12 +1078,23 @@ class ProjectController extends Controller
 
             'is_marked' => (bool) $project->is_marked,
 
+            /*
+            |--------------------------------------------------------------------------
+            | Project Status
+            |--------------------------------------------------------------------------
+            */
+
+            'status' => $project->status,
+
             'campaign_images' => $project->campaignImages
                 ->map(function ($image) {
+
                     return [
                         'id' => $image->id,
+
                         'image' => Storage::disk('public')
                             ->url($image->image),
+
                         'sort_order' => $image->sort_order,
                     ];
                 })
@@ -1026,18 +1102,23 @@ class ProjectController extends Controller
 
             'images' => $project->images
                 ->map(function ($image) {
+
                     return [
                         'id' => $image->id,
+
                         'image' => Storage::disk('public')
                             ->url($image->image),
+
                         'sort_order' => $image->sort_order,
                     ];
                 })
                 ->values(),
 
-            'created_at' => $project->created_at?->toISOString(),
+            'created_at' =>
+                $project->created_at?->toISOString(),
 
-            'updated_at' => $project->updated_at?->toISOString(),
+            'updated_at' =>
+                $project->updated_at?->toISOString(),
         ];
     }
 
@@ -1048,7 +1129,11 @@ class ProjectController extends Controller
     {
         $locale = $request->query('lang', 'en');
 
-        return in_array($locale, ['en', 'fa'], true)
+        return in_array(
+            $locale,
+            ['en', 'fa'],
+            true
+        )
             ? $locale
             : 'en';
     }

@@ -20,6 +20,17 @@ class ArtistPortfolio extends Model
         'sort_order' => 'integer',
     ];
 
+    protected $appends = [
+        'file_url',
+    ];
+
+    public function getFileUrlAttribute(): ?string
+    {
+        return $this->file
+            ? asset('storage/' . $this->file)
+            : null;
+    }
+
     public function artist(): BelongsTo
     {
         return $this->belongsTo(
