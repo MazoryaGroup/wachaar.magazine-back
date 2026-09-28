@@ -26,19 +26,28 @@ class ArtistResource extends Resource
 
     protected static ?string $navigationLabel = 'آرتیست';
 
-
     protected static ?int $navigationSort = 6;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form
+    |--------------------------------------------------------------------------
+    */
 
     public static function form(Form $form): Form
     {
         return $form
             ->schema([
 
-                // ========================================
-                // Artist Information
-                // ========================================
+                /*
+                |--------------------------------------------------------------------------
+                | Artist Information
+                |--------------------------------------------------------------------------
+                */
+
                 Section::make('Artist Information')
                     ->schema([
+
                         TextInput::make('first_name')
                             ->label('First Name')
                             ->required()
@@ -48,39 +57,29 @@ class ArtistResource extends Resource
                             ->label('Last Name')
                             ->required()
                             ->maxLength(100),
-                        Forms\Components\Select::make('status')
+
+                        Select::make('status')
                             ->label('Status')
                             ->options([
-                                'draft' => 'در حال بررسی',
+                                'pending' => 'در حال بررسی',
                                 'approved' => 'تأیید شده',
                                 'rejected' => 'عدم تأیید',
                             ])
-                            ->default('draft')
                             ->required()
                             ->native(false),
 
-//                        FileUpload::make('profile_image')
-//                            ->label('Profile Image')
-//                            ->image()
-//                            ->disk('public')
-//                            ->directory('artists/profile')
-//                            ->visibility('public')
-//                            ->acceptedFileTypes([
-//                                'image/jpeg',
-//                                'image/png',
-//                                'image/webp',
-//                            ])
-//                            ->maxSize(5120)
-//                            ->imagePreviewHeight('200')
-//                            ->columnSpanFull(),
                     ])
                     ->columns(2),
 
-                // ========================================
-                // Social Media
-                // ========================================
+                /*
+                |--------------------------------------------------------------------------
+                | Social Media
+                |--------------------------------------------------------------------------
+                */
+
                 Section::make('Social Media')
                     ->schema([
+
                         TextInput::make('facebook_url')
                             ->label('Facebook URL')
                             ->url()
@@ -98,14 +97,19 @@ class ArtistResource extends Resource
                             ->url()
                             ->maxLength(500)
                             ->placeholder('https://youtube.com/...'),
+
                     ])
                     ->columns(3),
 
-                // ========================================
-                // Content 1
-                // ========================================
+                /*
+                |--------------------------------------------------------------------------
+                | Content 1
+                |--------------------------------------------------------------------------
+                */
+
                 Section::make('Content 1')
                     ->schema([
+
                         TextInput::make('title_1')
                             ->label('Title 1')
                             ->maxLength(255),
@@ -115,14 +119,19 @@ class ArtistResource extends Resource
                             ->rows(5)
                             ->maxLength(10000)
                             ->columnSpanFull(),
+
                     ])
                     ->columns(1),
 
-                // ========================================
-                // Content 2
-                // ========================================
+                /*
+                |--------------------------------------------------------------------------
+                | Content 2
+                |--------------------------------------------------------------------------
+                */
+
                 Section::make('Content 2')
                     ->schema([
+
                         TextInput::make('title_2')
                             ->label('Title 2')
                             ->maxLength(255),
@@ -132,15 +141,22 @@ class ArtistResource extends Resource
                             ->rows(5)
                             ->maxLength(10000)
                             ->columnSpanFull(),
+
                     ])
                     ->columns(1),
 
-                // ========================================
-                // Portfolio Gallery
-                // ========================================
+                /*
+                |--------------------------------------------------------------------------
+                | Portfolio Gallery
+                |--------------------------------------------------------------------------
+                */
+
                 Section::make('Portfolio Gallery')
-                    ->description('Add images and videos to the artist portfolio.')
+                    ->description(
+                        'Add images and videos to the artist portfolio.'
+                    )
                     ->schema([
+
                         Repeater::make('portfolios')
                             ->relationship()
                             ->label('Portfolio Items')
@@ -163,20 +179,26 @@ class ArtistResource extends Resource
                                     ->visibility('public')
                                     ->required()
                                     ->maxSize(100 * 1024)
-                                    ->acceptedFileTypes(function (Forms\Get $get) {
-                                        return $get('type') === 'video'
-                                            ? [
-                                                'video/mp4',
-                                                'video/webm',
-                                                'video/quicktime',
-                                            ]
-                                            : [
-                                                'image/jpeg',
-                                                'image/png',
-                                                'image/webp',
-                                            ];
-                                    })
-                                    ->image(fn (Forms\Get $get) => $get('type') === 'image')
+                                    ->acceptedFileTypes(
+                                        function (Forms\Get $get) {
+
+                                            return $get('type') === 'video'
+                                                ? [
+                                                    'video/mp4',
+                                                    'video/webm',
+                                                    'video/quicktime',
+                                                ]
+                                                : [
+                                                    'image/jpeg',
+                                                    'image/png',
+                                                    'image/webp',
+                                                ];
+                                        }
+                                    )
+                                    ->image(
+                                        fn (Forms\Get $get) =>
+                                            $get('type') === 'image'
+                                    )
                                     ->openable()
                                     ->downloadable(),
 
@@ -185,23 +207,34 @@ class ArtistResource extends Resource
                                     ->numeric()
                                     ->default(0)
                                     ->minValue(0),
+
                             ])
                             ->columns(3)
                             ->reorderable('sort_order')
                             ->orderColumn('sort_order')
                             ->addActionLabel('Add Portfolio Item')
                             ->collapsible()
-                            ->itemLabel(function (array $state): ?string {
-                                if (!empty($state['type'])) {
-                                    return ucfirst($state['type']);
-                                }
+                            ->itemLabel(
+                                function (array $state): ?string {
 
-                                return 'Portfolio Item';
-                            })
+                                    if (!empty($state['type'])) {
+                                        return ucfirst($state['type']);
+                                    }
+
+                                    return 'Portfolio Item';
+                                }
+                            )
                             ->columnSpanFull(),
+
                     ]),
             ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Table
+    |--------------------------------------------------------------------------
+    */
 
     public static function table(Table $table): Table
     {
@@ -223,50 +256,100 @@ class ArtistResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                Tables\Columns\TextColumn::make('status')
+                TextColumn::make('status')
                     ->label('وضعیت')
                     ->badge()
-                    ->formatStateUsing(fn ($state) => match ($state) {
-                        'draft' => 'در حال بررسی',
-                        'approved' => 'تأیید شده',
-                        'rejected' => 'عدم تأیید',
-                        default => $state,
-                    })
-                    ->color(fn ($state) => match ($state) {
-                        'draft' => 'warning',
-                        'approved' => 'success',
-                        'rejected' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->formatStateUsing(
+                        fn ($state) => match ($state) {
+
+                            'pending' =>
+                            'در حال بررسی',
+
+                            'approved' =>
+                            'تأیید شده',
+
+                            'rejected' =>
+                            'عدم تأیید',
+
+                            default =>
+                            $state,
+                        }
+                    )
+                    ->color(
+                        fn ($state) => match ($state) {
+
+                            'pending' =>
+                            'warning',
+
+                            'approved' =>
+                            'success',
+
+                            'rejected' =>
+                            'danger',
+
+                            default =>
+                            'gray',
+                        }
+                    ),
 
                 TextColumn::make('created_at')
                     ->label('Created')
                     ->dateTime()
                     ->sortable(),
+
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort(
+                'created_at',
+                'desc'
+            )
             ->actions([
+
                 Tables\Actions\EditAction::make(),
+
                 Tables\Actions\DeleteAction::make(),
+
             ])
             ->bulkActions([
+
                 Tables\Actions\BulkActionGroup::make([
+
                     Tables\Actions\DeleteBulkAction::make(),
+
                 ]),
+
             ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Relations
+    |--------------------------------------------------------------------------
+    */
 
     public static function getRelations(): array
     {
         return [];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Pages
+    |--------------------------------------------------------------------------
+    */
+
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListArtists::route('/'),
-            'create' => Pages\CreateArtist::route('/create'),
-            'edit' => Pages\EditArtist::route('/{record}/edit'),
+
+            'index' =>
+                Pages\ListArtists::route('/'),
+
+            'create' =>
+                Pages\CreateArtist::route('/create'),
+
+            'edit' =>
+                Pages\EditArtist::route('/{record}/edit'),
+
         ];
     }
 }

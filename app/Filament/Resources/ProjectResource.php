@@ -16,7 +16,7 @@ class ProjectResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-briefcase';
 
-    protected static ?string $navigationLabel = 'پروژه  ';
+    protected static ?string $navigationLabel = 'پروژه';
 
     protected static ?string $modelLabel = 'پروژه';
 
@@ -59,7 +59,7 @@ class ProjectResource extends Resource
                                 'approved' => 'تأیید شده',
                                 'rejected' => 'عدم تأیید',
                             ])
-                            ->default('pending')
+                            ->default('draft')
                             ->required()
                             ->native(false),
 
@@ -313,6 +313,7 @@ class ProjectResource extends Resource
                 Tables\Columns\IconColumn::make('is_marked')
                     ->label('Marked')
                     ->boolean(),
+
                 Tables\Columns\TextColumn::make('status')
                     ->label('وضعیت')
                     ->badge()
@@ -328,7 +329,6 @@ class ProjectResource extends Resource
                         'rejected' => 'danger',
                         default => 'gray',
                     }),
-
 
                 Tables\Columns\TextColumn::make('project_date')
                     ->label('تاریخ پروژه')

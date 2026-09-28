@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Artist;
+use App\Mail\ArtistdraftMail;
+use App\Mail\ArtistApprovedMail;
+use App\Mail\ArtistRejectedMail;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 class ArtistController extends Controller
@@ -155,6 +159,20 @@ class ArtistController extends Controller
                 'message' => 'Artist profile not found.',
             ], 404);
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Store Previous Status
+        |--------------------------------------------------------------------------
+        */
+
+        $previousStatus = $artist->status;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Validation
+        |--------------------------------------------------------------------------
+        */
 
         $validated = $request->validate([
 
@@ -331,11 +349,24 @@ class ArtistController extends Controller
 
         /*
         |--------------------------------------------------------------------------
-        | Artist Status
+        | Profile Status
         |--------------------------------------------------------------------------
+        |
+        | When an artist modifies their profile after:
+        |
+        | approved
+        | rejected
+        | draft
+        |
+        | the profile goes back to pending review.
+        |
         */
 
-        if ($artist->status === 'approved') {
+        if (in_array($artist->status, [
+            'approved',
+            'rejected',
+            'draft',
+        ], true)) {
 
             $artist->status = 'pending';
 
@@ -346,13 +377,82 @@ class ArtistController extends Controller
             $artist->rejection_reason = null;
         }
 
+        /*
+        |--------------------------------------------------------------------------
+        | Save
+        |--------------------------------------------------------------------------
+        */
+
         $artist->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Status Email
+        |--------------------------------------------------------------------------
+        */
+
+        $newStatus = $artist->status;
+
+        if ($previousStatus !== $newStatus) {
+
+            $this->sendStatusEmail(
+                $artist,
+                $client->email,
+                $newStatus
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Response
+        |--------------------------------------------------------------------------
+        */
 
         return response()->json([
             'success' => true,
             'message' => 'Artist profile updated successfully.',
             'data' => $this->formatArtist($artist),
         ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Send Artist Status Email
+    |--------------------------------------------------------------------------
+    */
+
+    private function sendStatusEmail(
+        Artist $artist,
+        string $email,
+        string $status
+    ): void {
+
+        if ($status === 'pending') {
+
+            Mail::to($email)->send(
+                new ArtistdraftMail($artist)
+            );
+
+            return;
+        }
+
+        if ($status === 'approved') {
+
+            Mail::to($email)->send(
+                new ArtistApprovedMail($artist)
+            );
+
+            return;
+        }
+
+        if ($status === 'rejected') {
+
+            Mail::to($email)->send(
+                new ArtistRejectedMail($artist)
+            );
+
+            return;
+        }
     }
 
     /*

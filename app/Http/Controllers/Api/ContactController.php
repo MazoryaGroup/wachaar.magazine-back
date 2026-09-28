@@ -7,6 +7,8 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Exception;
+use App\Mail\ContactReceivedMail;
+use Illuminate\Support\Facades\Mail;
 
 class ContactController extends Controller
 {
@@ -28,14 +30,12 @@ class ContactController extends Controller
                 'max:255',
             ],
 
-            // سرویس موردنظر
             'service' => [
                 'required',
                 'string',
                 'max:255',
             ],
 
-            // نام شرکت
             'company_name' => [
                 'nullable',
                 'string',
@@ -51,12 +51,23 @@ class ContactController extends Controller
 
         try {
 
-            // پاکسازی ورودی‌ها
-            $validated['name'] = strip_tags(trim($validated['name']));
+            /*
+            |--------------------------------------------------------------------------
+            | Clean Inputs
+            |--------------------------------------------------------------------------
+            */
 
-            $validated['message'] = strip_tags(trim($validated['message']));
+            $validated['name'] = strip_tags(
+                trim($validated['name'])
+            );
 
-            $validated['service'] = strip_tags(trim($validated['service']));
+            $validated['message'] = strip_tags(
+                trim($validated['message'])
+            );
+
+            $validated['service'] = strip_tags(
+                trim($validated['service'])
+            );
 
             if (!empty($validated['company_name'])) {
                 $validated['company_name'] = strip_tags(
@@ -64,10 +75,33 @@ class ContactController extends Controller
                 );
             }
 
-            $validated['email'] = strtolower(trim($validated['email']));
+            $validated['email'] = strtolower(
+                trim($validated['email'])
+            );
 
-            // ذخیره در دیتابیس
+            /*
+            |--------------------------------------------------------------------------
+            | Save Contact Message
+            |--------------------------------------------------------------------------
+            */
+
             $contact = Contact::create($validated);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Send Confirmation Email To User
+            |--------------------------------------------------------------------------
+            */
+
+            Mail::to($contact->email)->send(
+                new ContactReceivedMail($contact)
+            );
+
+            /*
+            |--------------------------------------------------------------------------
+            | Response
+            |--------------------------------------------------------------------------
+            */
 
             return response()->json([
                 'status' => true,
@@ -83,7 +117,9 @@ class ContactController extends Controller
 
         } catch (Exception $e) {
 
-            Log::error('Contact Store Error: ' . $e->getMessage());
+            Log::error(
+                'Contact Store Error: ' . $e->getMessage()
+            );
 
             return response()->json([
                 'status' => false,
@@ -91,7 +127,6 @@ class ContactController extends Controller
             ], 500);
         }
     }
-
     /**
      * لیست تماس‌ها - فقط ادمین
      */

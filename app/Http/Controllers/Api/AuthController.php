@@ -11,6 +11,10 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Storage;
+use App\Mail\WelcomeArtistMail;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ForgotPasswordMail;
+use App\Models\PasswordResetCode;
 
 class AuthController extends Controller
 {
@@ -109,6 +113,16 @@ class AuthController extends Controller
         */
 
         $client->load('artist');
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Welcome Email
+        |--------------------------------------------------------------------------
+        */
+
+        Mail::to($client->email)->send(
+            new WelcomeArtistMail($client)
+        );
 
         /*
         |--------------------------------------------------------------------------
@@ -336,5 +350,185 @@ class AuthController extends Controller
         }
 
         return $data;
+    }
+    public function forgotPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $email = strtolower(trim($request->email));
+
+        $client = Client::where('email', $email)->first();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Do not reveal whether email exists
+        |--------------------------------------------------------------------------
+        */
+
+        if (!$client) {
+            return response()->json([
+                'success' => true,
+                'message' => 'If this email exists, a password reset code has been sent.',
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Generate 6 Digit Code
+        |--------------------------------------------------------------------------
+        */
+
+        $code = (string) random_int(100000, 999999);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete Previous Codes
+        |--------------------------------------------------------------------------
+        */
+
+        PasswordResetCode::where('email', $email)->delete();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Create New Code
+        |--------------------------------------------------------------------------
+        */
+
+        PasswordResetCode::create([
+            'email' => $email,
+            'code' => $code,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Send Email
+        |--------------------------------------------------------------------------
+        */
+
+        Mail::to($email)->send(
+            new ForgotPasswordMail($code)
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset code has been sent to your email.',
+        ]);
+    }
+    public function resetPassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+            ],
+
+            'code' => [
+                'required',
+                'digits:6',
+            ],
+
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+            ],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $email = strtolower(trim($request->email));
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Client
+        |--------------------------------------------------------------------------
+        */
+
+        $client = Client::where('email', $email)->first();
+
+        if (!$client) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid password reset request.',
+            ], 400);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Find Reset Code
+        |--------------------------------------------------------------------------
+        */
+
+        $resetCode = PasswordResetCode::where('email', $email)
+            ->where('code', $request->code)
+            ->first();
+
+        if (!$resetCode) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid verification code.',
+            ], 400);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Check Expiration
+        |--------------------------------------------------------------------------
+        */
+
+        if ($resetCode->expires_at->isPast()) {
+
+            $resetCode->delete();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Verification code has expired.',
+            ], 400);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Update Password
+        |--------------------------------------------------------------------------
+        */
+
+        $client->password = Hash::make($request->password);
+        $client->save();
+
+        /*
+        |--------------------------------------------------------------------------
+        | Delete Used Code
+        |--------------------------------------------------------------------------
+        */
+
+        $resetCode->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password has been reset successfully.',
+        ]);
     }
 }

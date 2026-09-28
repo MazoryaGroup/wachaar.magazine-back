@@ -3,12 +3,18 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ProjectApprovedMail;
+use App\Mail\ProjectdraftMail;
+use App\Mail\ProjectRejectedMail;
+use App\Models\Artist;
+use App\Models\Client;
 use App\Models\Project;
+use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use Exception;
 
 class ProjectController extends Controller
 {
@@ -191,6 +197,17 @@ class ProjectController extends Controller
 
             /*
             |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
+
+            'status' => [
+                'nullable',
+                'in:pending,approved,rejected',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
             | Main Media
             |--------------------------------------------------------------------------
             */
@@ -264,6 +281,14 @@ class ProjectController extends Controller
 
             /*
             |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
+
+            $project->status = $validated['status'] ?? 'pending';
+
+            /*
+            |--------------------------------------------------------------------------
             | Main Video
             |--------------------------------------------------------------------------
             */
@@ -272,7 +297,10 @@ class ProjectController extends Controller
 
                 $project->video = $request
                     ->file('video')
-                    ->store('projects/videos', 'public');
+                    ->store(
+                        'projects/videos',
+                        'api_public'
+                    );
             }
 
             /*
@@ -285,7 +313,10 @@ class ProjectController extends Controller
 
                 $project->cover = $request
                     ->file('cover')
-                    ->store('projects/covers', 'public');
+                    ->store(
+                        'projects/covers',
+                        'api_public'
+                    );
             }
 
             /*
@@ -300,7 +331,7 @@ class ProjectController extends Controller
                     ->file('behind_the_scenes_video')
                     ->store(
                         'projects/behind-the-scenes',
-                        'public'
+                        'api_public'
                     );
             }
 
@@ -315,7 +346,8 @@ class ProjectController extends Controller
             $project->translations()->create([
                 'locale' => 'en',
 
-                'title' => $validated['translations']['en']['title'],
+                'title' =>
+                    $validated['translations']['en']['title'],
 
                 'subject' =>
                     $validated['translations']['en']['subject'] ?? null,
@@ -345,7 +377,8 @@ class ProjectController extends Controller
             $project->translations()->create([
                 'locale' => 'fa',
 
-                'title' => $validated['translations']['fa']['title'],
+                'title' =>
+                    $validated['translations']['fa']['title'],
 
                 'subject' =>
                     $validated['translations']['fa']['subject'] ?? null,
@@ -381,7 +414,7 @@ class ProjectController extends Controller
 
                     $path = $image->store(
                         'projects/campaign',
-                        'public'
+                        'api_public'
                     );
 
                     $project->campaignImages()->create([
@@ -406,7 +439,7 @@ class ProjectController extends Controller
 
                     $path = $image->store(
                         'projects/images',
-                        'public'
+                        'api_public'
                     );
 
                     $project->images()->create([
@@ -426,7 +459,10 @@ class ProjectController extends Controller
                 'status' => true,
                 'statusCode' => 201,
                 'message' => 'Project created successfully.',
-                'data' => $this->formatProject($project, 'en'),
+                'data' => $this->formatProject(
+                    $project,
+                    'en'
+                ),
             ], 201);
 
         } catch (Exception $e) {
@@ -449,8 +485,11 @@ class ProjectController extends Controller
     /**
      * بروزرسانی پروژه
      */
-    public function update(Request $request, int $id): JsonResponse
-    {
+    public function update(
+        Request $request,
+        int $id
+    ): JsonResponse {
+
         $project = Project::with([
             'translations',
             'campaignImages',
@@ -466,6 +505,14 @@ class ProjectController extends Controller
                 'data' => null,
             ], 404);
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Previous Status
+        |--------------------------------------------------------------------------
+        */
+
+        $previousStatus = $project->status;
 
         $validated = $request->validate([
 
@@ -585,6 +632,18 @@ class ProjectController extends Controller
 
             /*
             |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
+
+            'status' => [
+                'sometimes',
+                'required',
+                'in:pending,approved,rejected',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
             | Main Media
             |--------------------------------------------------------------------------
             */
@@ -671,6 +730,10 @@ class ProjectController extends Controller
                 $project->is_marked = $validated['is_marked'];
             }
 
+            if (array_key_exists('status', $validated)) {
+                $project->status = $validated['status'];
+            }
+
             /*
             |--------------------------------------------------------------------------
             | Replace Main Video
@@ -680,13 +743,16 @@ class ProjectController extends Controller
             if ($request->hasFile('video')) {
 
                 if ($project->video) {
-                    Storage::disk('public')
+                    Storage::disk('api_public')
                         ->delete($project->video);
                 }
 
                 $project->video = $request
                     ->file('video')
-                    ->store('projects/videos', 'public');
+                    ->store(
+                        'projects/videos',
+                        'api_public'
+                    );
             }
 
             /*
@@ -698,13 +764,16 @@ class ProjectController extends Controller
             if ($request->hasFile('cover')) {
 
                 if ($project->cover) {
-                    Storage::disk('public')
+                    Storage::disk('api_public')
                         ->delete($project->cover);
                 }
 
                 $project->cover = $request
                     ->file('cover')
-                    ->store('projects/covers', 'public');
+                    ->store(
+                        'projects/covers',
+                        'api_public'
+                    );
             }
 
             /*
@@ -717,7 +786,7 @@ class ProjectController extends Controller
 
                 if ($project->behind_the_scenes_video) {
 
-                    Storage::disk('public')->delete(
+                    Storage::disk('api_public')->delete(
                         $project->behind_the_scenes_video
                     );
                 }
@@ -726,7 +795,7 @@ class ProjectController extends Controller
                     ->file('behind_the_scenes_video')
                     ->store(
                         'projects/behind-the-scenes',
-                        'public'
+                        'api_public'
                     );
             }
 
@@ -832,7 +901,7 @@ class ProjectController extends Controller
 
                     $path = $image->store(
                         'projects/campaign',
-                        'public'
+                        'api_public'
                     );
 
                     $project->campaignImages()->create([
@@ -863,7 +932,7 @@ class ProjectController extends Controller
 
                     $path = $image->store(
                         'projects/images',
-                        'public'
+                        'api_public'
                     );
 
                     $project->images()->create([
@@ -874,17 +943,69 @@ class ProjectController extends Controller
                 }
             }
 
+            /*
+            |--------------------------------------------------------------------------
+            | Reload Project
+            |--------------------------------------------------------------------------
+            */
+
             $project->load([
                 'translations',
                 'campaignImages',
                 'images',
             ]);
 
+            /*
+            |--------------------------------------------------------------------------
+            | Send Status Email
+            |--------------------------------------------------------------------------
+            */
+
+            $newStatus = $project->status;
+
+            if ($previousStatus !== $newStatus) {
+
+                $email = $this->getProjectOwnerEmail($project);
+
+                if ($email) {
+
+                    if ($newStatus === 'pending') {
+
+                        Mail::to($email)->send(
+                            new ProjectPendingMail($project)
+                        );
+                    }
+
+                    elseif ($newStatus === 'approved') {
+
+                        Mail::to($email)->send(
+                            new ProjectApprovedMail($project)
+                        );
+                    }
+
+                    elseif ($newStatus === 'rejected') {
+
+                        Mail::to($email)->send(
+                            new ProjectRejectedMail($project)
+                        );
+                    }
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Response
+            |--------------------------------------------------------------------------
+            */
+
             return response()->json([
                 'status' => true,
                 'statusCode' => 200,
                 'message' => 'Project updated successfully.',
-                'data' => $this->formatProject($project, 'en'),
+                'data' => $this->formatProject(
+                    $project,
+                    'en'
+                ),
             ]);
 
         } catch (Exception $e) {
@@ -933,18 +1054,20 @@ class ProjectController extends Controller
             */
 
             if ($project->video) {
-                Storage::disk('public')
+
+                Storage::disk('api_public')
                     ->delete($project->video);
             }
 
             if ($project->cover) {
-                Storage::disk('public')
+
+                Storage::disk('api_public')
                     ->delete($project->cover);
             }
 
             if ($project->behind_the_scenes_video) {
 
-                Storage::disk('public')->delete(
+                Storage::disk('api_public')->delete(
                     $project->behind_the_scenes_video
                 );
             }
@@ -958,7 +1081,8 @@ class ProjectController extends Controller
             foreach ($project->campaignImages as $image) {
 
                 if ($image->image) {
-                    Storage::disk('public')
+
+                    Storage::disk('api_public')
                         ->delete($image->image);
                 }
             }
@@ -972,7 +1096,8 @@ class ProjectController extends Controller
             foreach ($project->images as $image) {
 
                 if ($image->image) {
-                    Storage::disk('public')
+
+                    Storage::disk('api_public')
                         ->delete($image->image);
                 }
             }
@@ -1010,6 +1135,67 @@ class ProjectController extends Controller
     }
 
     /**
+     * پیدا کردن ایمیل صاحب پروژه
+     */
+    private function getProjectOwnerEmail(Project $project): ?string
+    {
+        /*
+        |--------------------------------------------------------------------------
+        | Owner Type / ID
+        |--------------------------------------------------------------------------
+        */
+
+        if (
+            !empty($project->owner_type) &&
+            !empty($project->owner_id)
+        ) {
+
+            /*
+            |--------------------------------------------------------------------------
+            | Artist Owner
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $project->owner_type === Artist::class ||
+                $project->owner_type === 'artist' ||
+                str_ends_with(
+                    $project->owner_type,
+                    '\\Artist'
+                )
+            ) {
+
+                $artist = Artist::with('client')
+                    ->find($project->owner_id);
+
+                return $artist?->client?->email;
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Client Owner
+            |--------------------------------------------------------------------------
+            */
+
+            if (
+                $project->owner_type === Client::class ||
+                $project->owner_type === 'client' ||
+                str_ends_with(
+                    $project->owner_type,
+                    '\\Client'
+                )
+            ) {
+
+                $client = Client::find($project->owner_id);
+
+                return $client?->email;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * فرمت خروجی پروژه
      */
     private function formatProject(
@@ -1039,26 +1225,31 @@ class ProjectController extends Controller
             'title' => $translation?->title,
 
             'video' => $project->video
-                ? Storage::disk('public')
+                ? Storage::disk('api_public')
                     ->url($project->video)
                 : null,
 
             'cover' => $project->cover
-                ? Storage::disk('public')
+                ? Storage::disk('api_public')
                     ->url($project->cover)
                 : null,
 
-            'description' => $translation?->description,
+            'description' =>
+                $translation?->description,
 
-            'subject' => $translation?->subject,
+            'subject' =>
+                $translation?->subject,
 
-            'client' => $project->client,
+            'client' =>
+                $project->client,
 
-            'project_date' => $project->project_date
-                ? $project->project_date->format('Y-m-d')
-                : null,
+            'project_date' =>
+                $project->project_date
+                    ? $project->project_date->format('Y-m-d')
+                    : null,
 
-            'type' => $project->type,
+            'type' =>
+                $project->type,
 
             'project_description' =>
                 $translation?->project_description,
@@ -1071,12 +1262,13 @@ class ProjectController extends Controller
 
             'behind_the_scenes_video' =>
                 $project->behind_the_scenes_video
-                    ? Storage::disk('public')->url(
+                    ? Storage::disk('api_public')->url(
                     $project->behind_the_scenes_video
                 )
                     : null,
 
-            'is_marked' => (bool) $project->is_marked,
+            'is_marked' =>
+                (bool) $project->is_marked,
 
             /*
             |--------------------------------------------------------------------------
@@ -1084,35 +1276,56 @@ class ProjectController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            'status' => $project->status,
+            'status' =>
+                $project->status,
 
-            'campaign_images' => $project->campaignImages
-                ->map(function ($image) {
+            /*
+            |--------------------------------------------------------------------------
+            | Campaign Images
+            |--------------------------------------------------------------------------
+            */
 
-                    return [
-                        'id' => $image->id,
+            'campaign_images' =>
+                $project->campaignImages
+                    ->map(function ($image) {
 
-                        'image' => Storage::disk('public')
-                            ->url($image->image),
+                        return [
+                            'id' =>
+                                $image->id,
 
-                        'sort_order' => $image->sort_order,
-                    ];
-                })
-                ->values(),
+                            'image' =>
+                                Storage::disk('api_public')
+                                    ->url($image->image),
 
-            'images' => $project->images
-                ->map(function ($image) {
+                            'sort_order' =>
+                                $image->sort_order,
+                        ];
+                    })
+                    ->values(),
 
-                    return [
-                        'id' => $image->id,
+            /*
+            |--------------------------------------------------------------------------
+            | Project Images
+            |--------------------------------------------------------------------------
+            */
 
-                        'image' => Storage::disk('public')
-                            ->url($image->image),
+            'images' =>
+                $project->images
+                    ->map(function ($image) {
 
-                        'sort_order' => $image->sort_order,
-                    ];
-                })
-                ->values(),
+                        return [
+                            'id' =>
+                                $image->id,
+
+                            'image' =>
+                                Storage::disk('api_public')
+                                    ->url($image->image),
+
+                            'sort_order' =>
+                                $image->sort_order,
+                        ];
+                    })
+                    ->values(),
 
             'created_at' =>
                 $project->created_at?->toISOString(),
@@ -1125,9 +1338,14 @@ class ProjectController extends Controller
     /**
      * زبان درخواست
      */
-    private function getLocale(Request $request): string
-    {
-        $locale = $request->query('lang', 'en');
+    private function getLocale(
+        Request $request
+    ): string {
+
+        $locale = $request->query(
+            'lang',
+            'en'
+        );
 
         return in_array(
             $locale,
