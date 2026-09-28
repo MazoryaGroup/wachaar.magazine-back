@@ -39,6 +39,10 @@ class Magazine extends Model
 
     public function translation(string $locale): ?MagazineTranslation
     {
+        if (!in_array($locale, ['fa', 'en'], true)) {
+            return null;
+        }
+
         return $this->translations()
             ->where('locale', $locale)
             ->first();

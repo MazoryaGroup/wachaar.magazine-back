@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Tymon\JWTAuth\Facades\JWTAuth;
+use Illuminate\Support\Facades\Storage;
 
 class AuthController extends Controller
 {
@@ -137,6 +138,7 @@ class AuthController extends Controller
             ],
         ], 201);
     }
+
     /*
     |--------------------------------------------------------------------------
     | Login
@@ -188,8 +190,11 @@ class AuthController extends Controller
             'message' => 'Login successful.',
             'data' => [
                 'client' => $this->formatClient($client),
+
                 'token' => $token,
+
                 'token_type' => 'Bearer',
+
                 'expires_in' => auth('api')->factory()->getTTL() * 60,
             ],
         ]);
@@ -318,11 +323,14 @@ class AuthController extends Controller
 
                 'rejection_reason' => $artist->rejection_reason,
 
+                /*
+                |--------------------------------------------------------------------------
+                | Profile Image URL
+                |--------------------------------------------------------------------------
+                */
+
                 'profile_image' => $artist->profile_image
-                    ? asset(
-                        'storage/' .
-                        $artist->profile_image
-                    )
+                    ? Storage::disk('api_public')->url($artist->profile_image)
                     : null,
             ];
         }

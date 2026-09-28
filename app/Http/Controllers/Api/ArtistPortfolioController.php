@@ -153,7 +153,7 @@ class ArtistPortfolioController extends Controller
 
         $path = $file->store(
             'artists/portfolio',
-            'public'
+            'api_public'
         );
 
         $portfolio = ArtistPortfolio::create([
@@ -275,14 +275,14 @@ class ArtistPortfolioController extends Controller
             }
 
             if ($portfolio->file) {
-                Storage::disk('public')->delete(
+                Storage::disk('api_public')->delete(
                     $portfolio->file
                 );
             }
 
             $portfolio->file = $file->store(
                 'artists/portfolio',
-                'public'
+                'api_public'
             );
 
             $portfolio->type = $type;
@@ -357,7 +357,7 @@ class ArtistPortfolioController extends Controller
         }
 
         if ($portfolio->file) {
-            Storage::disk('public')->delete(
+            Storage::disk('api_public')->delete(
                 $portfolio->file
             );
         }
@@ -388,7 +388,7 @@ class ArtistPortfolioController extends Controller
             'type' => $portfolio->type,
 
             'file' => $portfolio->file
-                ? Storage::disk('public')->url(
+                ? Storage::disk('api_public')->url(
                     $portfolio->file
                 )
                 : null,

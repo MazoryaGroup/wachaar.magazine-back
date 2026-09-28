@@ -24,7 +24,7 @@ class ArtistResource extends Resource
 
     protected static ?string $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationLabel = 'Artists';
+    protected static ?string $navigationLabel = 'آرتیست';
 
 
     protected static ?int $navigationSort = 6;
@@ -48,21 +48,31 @@ class ArtistResource extends Resource
                             ->label('Last Name')
                             ->required()
                             ->maxLength(100),
-
-                        FileUpload::make('profile_image')
-                            ->label('Profile Image')
-                            ->image()
-                            ->disk('public')
-                            ->directory('artists/profile')
-                            ->visibility('public')
-                            ->acceptedFileTypes([
-                                'image/jpeg',
-                                'image/png',
-                                'image/webp',
+                        Forms\Components\Select::make('status')
+                            ->label('Status')
+                            ->options([
+                                'draft' => 'در حال بررسی',
+                                'approved' => 'تأیید شده',
+                                'rejected' => 'عدم تأیید',
                             ])
-                            ->maxSize(5120)
-                            ->imagePreviewHeight('200')
-                            ->columnSpanFull(),
+                            ->default('draft')
+                            ->required()
+                            ->native(false),
+
+//                        FileUpload::make('profile_image')
+//                            ->label('Profile Image')
+//                            ->image()
+//                            ->disk('public')
+//                            ->directory('artists/profile')
+//                            ->visibility('public')
+//                            ->acceptedFileTypes([
+//                                'image/jpeg',
+//                                'image/png',
+//                                'image/webp',
+//                            ])
+//                            ->maxSize(5120)
+//                            ->imagePreviewHeight('200')
+//                            ->columnSpanFull(),
                     ])
                     ->columns(2),
 
@@ -200,7 +210,7 @@ class ArtistResource extends Resource
 
                 ImageColumn::make('profile_image')
                     ->label('Profile')
-                    ->disk('public')
+                    ->disk('api_public')
                     ->circular(),
 
                 TextColumn::make('first_name')
@@ -213,17 +223,21 @@ class ArtistResource extends Resource
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('instagram_url')
-                    ->label('Instagram')
-                    ->limit(30),
-
-                TextColumn::make('facebook_url')
-                    ->label('Facebook')
-                    ->limit(30),
-
-                TextColumn::make('youtube_url')
-                    ->label('YouTube')
-                    ->limit(30),
+                Tables\Columns\TextColumn::make('status')
+                    ->label('وضعیت')
+                    ->badge()
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'draft' => 'در حال بررسی',
+                        'approved' => 'تأیید شده',
+                        'rejected' => 'عدم تأیید',
+                        default => $state,
+                    })
+                    ->color(fn ($state) => match ($state) {
+                        'draft' => 'warning',
+                        'approved' => 'success',
+                        'rejected' => 'danger',
+                        default => 'gray',
+                    }),
 
                 TextColumn::make('created_at')
                     ->label('Created')

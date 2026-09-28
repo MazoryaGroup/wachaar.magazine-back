@@ -21,6 +21,7 @@ class ArtistController extends Controller
     public function index(): JsonResponse
     {
         $artists = Artist::query()
+            ->where('status', 'approved')
             ->select([
                 'id',
                 'first_name',
@@ -55,6 +56,7 @@ class ArtistController extends Controller
     public function show(int $id): JsonResponse
     {
         $artist = Artist::query()
+            ->where('status', 'approved')
             ->select([
                 'id',
                 'first_name',
@@ -156,6 +158,12 @@ class ArtistController extends Controller
 
         $validated = $request->validate([
 
+            /*
+            |--------------------------------------------------------------------------
+            | Basic Information
+            |--------------------------------------------------------------------------
+            */
+
             'first_name' => [
                 'sometimes',
                 'required',
@@ -170,6 +178,12 @@ class ArtistController extends Controller
                 'max:100',
             ],
 
+            /*
+            |--------------------------------------------------------------------------
+            | Profile Image
+            |--------------------------------------------------------------------------
+            */
+
             'profile_image' => [
                 'sometimes',
                 'nullable',
@@ -177,6 +191,12 @@ class ArtistController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:10240',
             ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Social Media
+            |--------------------------------------------------------------------------
+            */
 
             'facebook_url' => [
                 'sometimes',
@@ -198,6 +218,12 @@ class ArtistController extends Controller
                 'url',
                 'max:255',
             ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Profile Content
+            |--------------------------------------------------------------------------
+            */
 
             'title_1' => [
                 'sometimes',
@@ -233,11 +259,15 @@ class ArtistController extends Controller
         */
 
         if (array_key_exists('first_name', $validated)) {
-            $artist->first_name = trim($validated['first_name']);
+            $artist->first_name = trim(
+                $validated['first_name']
+            );
         }
 
         if (array_key_exists('last_name', $validated)) {
-            $artist->last_name = trim($validated['last_name']);
+            $artist->last_name = trim(
+                $validated['last_name']
+            );
         }
 
         /*
@@ -289,14 +319,14 @@ class ArtistController extends Controller
         if ($request->hasFile('profile_image')) {
 
             if ($artist->profile_image) {
-                Storage::disk('public')->delete(
+                Storage::disk('api_public')->delete(
                     $artist->profile_image
                 );
             }
 
             $artist->profile_image = $request
                 ->file('profile_image')
-                ->store('artists', 'public');
+                ->store('artists', 'api_public');
         }
 
         /*
@@ -306,9 +336,13 @@ class ArtistController extends Controller
         */
 
         if ($artist->status === 'approved') {
+
             $artist->status = 'pending';
+
             $artist->submitted_at = now();
+
             $artist->reviewed_at = null;
+
             $artist->rejection_reason = null;
         }
 
@@ -330,6 +364,7 @@ class ArtistController extends Controller
     private function formatArtist($artist): array
     {
         return [
+
             'id' => $artist->id,
 
             'client_id' => $artist->client_id,
@@ -345,7 +380,7 @@ class ArtistController extends Controller
             ),
 
             'profile_image' => $artist->profile_image
-                ? Storage::disk('public')->url(
+                ? Storage::disk('api_public')->url(
                     $artist->profile_image
                 )
                 : null,
@@ -366,15 +401,20 @@ class ArtistController extends Controller
 
             'status' => $artist->status,
 
-            'submitted_at' => $artist->submitted_at?->toISOString(),
+            'submitted_at' =>
+                $artist->submitted_at?->toISOString(),
 
-            'reviewed_at' => $artist->reviewed_at?->toISOString(),
+            'reviewed_at' =>
+                $artist->reviewed_at?->toISOString(),
 
-            'rejection_reason' => $artist->rejection_reason,
+            'rejection_reason' =>
+                $artist->rejection_reason,
 
-            'created_at' => $artist->created_at?->toISOString(),
+            'created_at' =>
+                $artist->created_at?->toISOString(),
 
-            'updated_at' => $artist->updated_at?->toISOString(),
+            'updated_at' =>
+                $artist->updated_at?->toISOString(),
         ];
     }
 }

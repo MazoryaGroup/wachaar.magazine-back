@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Project;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,7 @@ class ArtistProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function index()
+    public function index(): JsonResponse
     {
         $client = auth('api')->user();
 
@@ -71,7 +72,7 @@ class ArtistProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function show($id)
+    public function show($id): JsonResponse
     {
         $client = auth('api')->user();
 
@@ -125,11 +126,11 @@ class ArtistProjectController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Destroy
+    | Store
     |--------------------------------------------------------------------------
     */
 
-    public function destroy($id)
+    public function store(Request $request): JsonResponse
     {
         $client = auth('api')->user();
 
@@ -143,7 +144,7 @@ class ArtistProjectController extends Controller
         if ($client->role !== 'artist') {
             return response()->json([
                 'success' => false,
-                'message' => 'Only artists can delete projects.',
+                'message' => 'Only artists can create projects.',
             ], 403);
         }
 
@@ -156,96 +157,359 @@ class ArtistProjectController extends Controller
             ], 404);
         }
 
-        $project = Project::with([
+        $validated = $request->validate([
+
+            /*
+            |--------------------------------------------------------------------------
+            | Main
+            |--------------------------------------------------------------------------
+            */
+
+            'client' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'project_date' => [
+                'nullable',
+                'date',
+            ],
+
+            'type' => [
+                'nullable',
+                'string',
+                'max:100',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Main Files
+            |--------------------------------------------------------------------------
+            */
+
+            'video' => [
+                'nullable',
+                'file',
+                'max:204800',
+            ],
+
+            'cover' => [
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:102400',
+            ],
+
+            'behind_the_scenes_video' => [
+                'nullable',
+                'file',
+                'max:204800',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Gallery
+            |--------------------------------------------------------------------------
+            */
+
+            'images' => [
+                'nullable',
+                'array',
+            ],
+
+            'images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Persian
+            |--------------------------------------------------------------------------
+            */
+
+            'fa.title' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'fa.subject' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'fa.description' => [
+                'nullable',
+                'string',
+            ],
+
+            'fa.project_description' => [
+                'nullable',
+                'string',
+            ],
+
+            'fa.campaign_description' => [
+                'nullable',
+                'string',
+            ],
+
+            'fa.project_cast' => [
+                'nullable',
+                'string',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | English
+            |--------------------------------------------------------------------------
+            */
+
+            'en.title' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'en.subject' => [
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'en.description' => [
+                'nullable',
+                'string',
+            ],
+
+            'en.project_description' => [
+                'nullable',
+                'string',
+            ],
+
+            'en.campaign_description' => [
+                'nullable',
+                'string',
+            ],
+
+            'en.project_cast' => [
+                'nullable',
+                'string',
+            ],
+        ]);
+
+        $storedFiles = [];
+
+        try {
+
+            $project = DB::transaction(function () use (
+                $request,
+                $validated,
+                $artist,
+                &$storedFiles
+            ) {
+
+                $project = Project::create([
+                    'owner_type' => 'artist',
+                    'owner_id' => $artist->id,
+
+                    'client' =>
+                        $validated['client'] ?? null,
+
+                    'project_date' =>
+                        $validated['project_date'] ?? null,
+
+                    'type' =>
+                        $validated['type'] ?? null,
+
+                    'status' => 'draft',
+                ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Cover
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile('cover')) {
+
+                    $path = $request
+                        ->file('cover')
+                        ->store(
+                            'projects/covers',
+                            'api_public'
+                        );
+
+                    $storedFiles[] = $path;
+
+                    $project->cover = $path;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Video
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile('video')) {
+
+                    $path = $request
+                        ->file('video')
+                        ->store(
+                            'projects/videos',
+                            'api_public'
+                        );
+
+                    $storedFiles[] = $path;
+
+                    $project->video = $path;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Behind The Scenes
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile(
+                    'behind_the_scenes_video'
+                )) {
+
+                    $path = $request
+                        ->file('behind_the_scenes_video')
+                        ->store(
+                            'projects/behind-the-scenes',
+                            'api_public'
+                        );
+
+                    $storedFiles[] = $path;
+
+                    $project->behind_the_scenes_video = $path;
+                }
+
+                $project->save();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Persian
+                |--------------------------------------------------------------------------
+                */
+
+                $project->translations()->create([
+                    'locale' => 'fa',
+
+                    'title' =>
+                        $validated['fa']['title'],
+
+                    'subject' =>
+                        $validated['fa']['subject'] ?? null,
+
+                    'description' =>
+                        $validated['fa']['description'] ?? null,
+
+                    'project_description' =>
+                        $validated['fa']['project_description']
+                        ?? null,
+
+                    'campaign_description' =>
+                        $validated['fa']['campaign_description']
+                        ?? null,
+
+                    'project_cast' =>
+                        $validated['fa']['project_cast']
+                        ?? null,
+                ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | English
+                |--------------------------------------------------------------------------
+                */
+
+                $project->translations()->create([
+                    'locale' => 'en',
+
+                    'title' =>
+                        $validated['en']['title'],
+
+                    'subject' =>
+                        $validated['en']['subject'] ?? null,
+
+                    'description' =>
+                        $validated['en']['description'] ?? null,
+
+                    'project_description' =>
+                        $validated['en']['project_description']
+                        ?? null,
+
+                    'campaign_description' =>
+                        $validated['en']['campaign_description']
+                        ?? null,
+
+                    'project_cast' =>
+                        $validated['en']['project_cast']
+                        ?? null,
+                ]);
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Gallery
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile('images')) {
+
+                    foreach (
+                        $request->file('images')
+                        as $index => $image
+                    ) {
+
+                        $path = $image->store(
+                            'projects/images',
+                            'api_public'
+                        );
+
+                        $storedFiles[] = $path;
+
+                        $project->images()->create([
+                            'image' => $path,
+                            'sort_order' => $index,
+                        ]);
+                    }
+                }
+
+                return $project;
+            });
+
+        } catch (\Throwable $e) {
+
+            foreach ($storedFiles as $file) {
+                Storage::disk('api_public')->delete($file);
+            }
+
+            throw $e;
+        }
+
+        $project->load([
             'translations',
             'images',
             'campaignImages',
-        ])
-            ->where('id', $id)
-            ->where('owner_type', 'artist')
-            ->where('owner_id', $artist->id)
-            ->first();
-
-        if (!$project) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Project not found.',
-            ], 404);
-        }
-
-        DB::transaction(function () use ($project) {
-
-            /*
-            |--------------------------------------------------------------------------
-            | Delete Main Files
-            |--------------------------------------------------------------------------
-            */
-
-            if ($project->video) {
-                Storage::disk('public')->delete($project->video);
-            }
-
-            if ($project->cover) {
-                Storage::disk('public')->delete($project->cover);
-            }
-
-            if ($project->behind_the_scenes_video) {
-                Storage::disk('public')->delete(
-                    $project->behind_the_scenes_video
-                );
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Delete Project Images
-            |--------------------------------------------------------------------------
-            */
-
-            foreach ($project->images as $image) {
-
-                if ($image->image) {
-                    Storage::disk('public')->delete($image->image);
-                }
-
-                $image->delete();
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Delete Campaign Images
-            |--------------------------------------------------------------------------
-            */
-
-            foreach ($project->campaignImages as $image) {
-
-                if ($image->image) {
-                    Storage::disk('public')->delete($image->image);
-                }
-
-                $image->delete();
-            }
-
-            /*
-            |--------------------------------------------------------------------------
-            | Delete Translations
-            |--------------------------------------------------------------------------
-            */
-
-            $project->translations()->delete();
-
-            /*
-            |--------------------------------------------------------------------------
-            | Delete Project
-            |--------------------------------------------------------------------------
-            */
-
-            $project->delete();
-        });
+        ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Project deleted successfully.',
-        ]);
+            'message' => 'Project created successfully.',
+            'data' => $this->formatProject($project),
+        ], 201);
     }
 
 
@@ -255,7 +519,7 @@ class ArtistProjectController extends Controller
     |--------------------------------------------------------------------------
     */
 
-    public function update(Request $request, $id)
+    public function update(Request $request, $id): JsonResponse
     {
         $client = auth('api')->user();
 
@@ -296,148 +560,463 @@ class ArtistProjectController extends Controller
 
         $validated = $request->validate([
 
-            'client' => 'nullable|string|max:255',
+            /*
+            |--------------------------------------------------------------------------
+            | Main
+            |--------------------------------------------------------------------------
+            */
 
-            'project_date' => 'nullable|date',
+            'client' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+            ],
 
-            'type' => 'nullable|string|max:100',
+            'project_date' => [
+                'sometimes',
+                'nullable',
+                'date',
+            ],
 
-            'fa.title' => 'sometimes|required|string|max:255',
-            'fa.subject' => 'nullable|string|max:255',
-            'fa.description' => 'nullable|string',
-            'fa.project_description' => 'nullable|string',
-            'fa.campaign_description' => 'nullable|string',
-            'fa.project_cast' => 'nullable|string',
+            'type' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:100',
+            ],
 
-            'en.title' => 'sometimes|required|string|max:255',
-            'en.subject' => 'nullable|string|max:255',
-            'en.description' => 'nullable|string',
-            'en.project_description' => 'nullable|string',
-            'en.campaign_description' => 'nullable|string',
-            'en.project_cast' => 'nullable|string',
+            /*
+            |--------------------------------------------------------------------------
+            | Files
+            |--------------------------------------------------------------------------
+            */
+
+            'video' => [
+                'sometimes',
+                'nullable',
+                'file',
+                'max:204800',
+            ],
+
+            'cover' => [
+                'sometimes',
+                'nullable',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:102400',
+            ],
+
+            'behind_the_scenes_video' => [
+                'sometimes',
+                'nullable',
+                'file',
+                'max:204800',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Gallery
+            |--------------------------------------------------------------------------
+            */
+
+            'images' => [
+                'sometimes',
+                'nullable',
+                'array',
+            ],
+
+            'images.*' => [
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | Persian
+            |--------------------------------------------------------------------------
+            */
+
+            'fa.title' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'fa.subject' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'fa.description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'fa.project_description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'fa.campaign_description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'fa.project_cast' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            /*
+            |--------------------------------------------------------------------------
+            | English
+            |--------------------------------------------------------------------------
+            */
+
+            'en.title' => [
+                'sometimes',
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'en.subject' => [
+                'sometimes',
+                'nullable',
+                'string',
+                'max:255',
+            ],
+
+            'en.description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'en.project_description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'en.campaign_description' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
+
+            'en.project_cast' => [
+                'sometimes',
+                'nullable',
+                'string',
+            ],
         ]);
 
-        DB::transaction(function () use ($validated, $project) {
+        $newFiles = [];
 
-            if (array_key_exists('client', $validated)) {
-                $project->client = $validated['client'];
-            }
+        try {
 
-            if (array_key_exists('project_date', $validated)) {
-                $project->project_date = $validated['project_date'];
-            }
+            DB::transaction(function () use (
+                $request,
+                $validated,
+                $project,
+                &$newFiles
+            ) {
 
-            if (array_key_exists('type', $validated)) {
-                $project->type = $validated['type'];
-            }
+                /*
+                |--------------------------------------------------------------------------
+                | Main
+                |--------------------------------------------------------------------------
+                */
 
-            /*
-            |--------------------------------------------------------------------------
-            | Approved -> Pending
-            |--------------------------------------------------------------------------
-            */
+                if (array_key_exists(
+                    'client',
+                    $validated
+                )) {
+                    $project->client =
+                        $validated['client'];
+                }
 
-            if ($project->status === 'approved') {
-                $project->status = 'pending';
-                $project->submitted_at = now();
-                $project->reviewed_at = null;
-                $project->rejection_reason = null;
-            }
+                if (array_key_exists(
+                    'project_date',
+                    $validated
+                )) {
+                    $project->project_date =
+                        $validated['project_date'];
+                }
 
-            $project->save();
+                if (array_key_exists(
+                    'type',
+                    $validated
+                )) {
+                    $project->type =
+                        $validated['type'];
+                }
 
 
-            /*
-            |--------------------------------------------------------------------------
-            | Persian Translation
-            |--------------------------------------------------------------------------
-            */
+                /*
+                |--------------------------------------------------------------------------
+                | Approved -> Pending
+                |--------------------------------------------------------------------------
+                */
 
-            if (isset($validated['fa'])) {
+                if ($project->status === 'approved') {
 
-                $translation = $project->translations()
-                    ->where('locale', 'fa')
-                    ->first();
+                    $project->status = 'pending';
 
-                if (!$translation) {
-                    $translation = $project->translations()->create([
-                        'locale' => 'fa',
+                    $project->submitted_at = now();
+
+                    $project->reviewed_at = null;
+
+                    $project->rejection_reason = null;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Video
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile('video')) {
+
+                    $newPath = $request
+                        ->file('video')
+                        ->store(
+                            'projects/videos',
+                            'api_public'
+                        );
+
+                    $newFiles[] = $newPath;
+
+                    if ($project->video) {
+                        Storage::disk('api_public')
+                            ->delete(
+                                $project->video
+                            );
+                    }
+
+                    $project->video = $newPath;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Cover
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile('cover')) {
+
+                    $newPath = $request
+                        ->file('cover')
+                        ->store(
+                            'projects/covers',
+                            'api_public'
+                        );
+
+                    $newFiles[] = $newPath;
+
+                    if ($project->cover) {
+                        Storage::disk('api_public')
+                            ->delete(
+                                $project->cover
+                            );
+                    }
+
+                    $project->cover = $newPath;
+                }
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Behind The Scenes
+                |--------------------------------------------------------------------------
+                */
+
+                if ($request->hasFile(
+                    'behind_the_scenes_video'
+                )) {
+
+                    $newPath = $request
+                        ->file('behind_the_scenes_video')
+                        ->store(
+                            'projects/behind-the-scenes',
+                            'api_public'
+                        );
+
+                    $newFiles[] = $newPath;
+
+                    if ($project->behind_the_scenes_video) {
+                        Storage::disk('api_public')
+                            ->delete(
+                                $project->behind_the_scenes_video
+                            );
+                    }
+
+                    $project->behind_the_scenes_video =
+                        $newPath;
+                }
+
+                $project->save();
+
+
+                /*
+                |--------------------------------------------------------------------------
+                | Persian
+                |--------------------------------------------------------------------------
+                */
+
+                if (isset($validated['fa'])) {
+
+                    $translation = $project
+                        ->translations()
+                        ->where('locale', 'fa')
+                        ->first();
+
+                    if (!$translation) {
+
+                        $translation =
+                            $project->translations()->create([
+                                'locale' => 'fa',
+                            ]);
+                    }
+
+                    $translation->update([
+
+                        'title' =>
+                            $validated['fa']['title']
+                            ?? $translation->title,
+
+                        'subject' =>
+                            $validated['fa']['subject']
+                            ?? $translation->subject,
+
+                        'description' =>
+                            $validated['fa']['description']
+                            ?? $translation->description,
+
+                        'project_description' =>
+                            $validated['fa']['project_description']
+                            ?? $translation->project_description,
+
+                        'campaign_description' =>
+                            $validated['fa']['campaign_description']
+                            ?? $translation->campaign_description,
+
+                        'project_cast' =>
+                            $validated['fa']['project_cast']
+                            ?? $translation->project_cast,
                     ]);
                 }
 
-                $translation->update([
-                    'title' =>
-                        $validated['fa']['title']
-                        ?? $translation->title,
 
-                    'subject' =>
-                        $validated['fa']['subject']
-                        ?? $translation->subject,
+                /*
+                |--------------------------------------------------------------------------
+                | English
+                |--------------------------------------------------------------------------
+                */
 
-                    'description' =>
-                        $validated['fa']['description']
-                        ?? $translation->description,
+                if (isset($validated['en'])) {
 
-                    'project_description' =>
-                        $validated['fa']['project_description']
-                        ?? $translation->project_description,
+                    $translation = $project
+                        ->translations()
+                        ->where('locale', 'en')
+                        ->first();
 
-                    'campaign_description' =>
-                        $validated['fa']['campaign_description']
-                        ?? $translation->campaign_description,
+                    if (!$translation) {
 
-                    'project_cast' =>
-                        $validated['fa']['project_cast']
-                        ?? $translation->project_cast,
-                ]);
-            }
+                        $translation =
+                            $project->translations()->create([
+                                'locale' => 'en',
+                            ]);
+                    }
 
+                    $translation->update([
 
-            /*
-            |--------------------------------------------------------------------------
-            | English Translation
-            |--------------------------------------------------------------------------
-            */
+                        'title' =>
+                            $validated['en']['title']
+                            ?? $translation->title,
 
-            if (isset($validated['en'])) {
+                        'subject' =>
+                            $validated['en']['subject']
+                            ?? $translation->subject,
 
-                $translation = $project->translations()
-                    ->where('locale', 'en')
-                    ->first();
+                        'description' =>
+                            $validated['en']['description']
+                            ?? $translation->description,
 
-                if (!$translation) {
-                    $translation = $project->translations()->create([
-                        'locale' => 'en',
+                        'project_description' =>
+                            $validated['en']['project_description']
+                            ?? $translation->project_description,
+
+                        'campaign_description' =>
+                            $validated['en']['campaign_description']
+                            ?? $translation->campaign_description,
+
+                        'project_cast' =>
+                            $validated['en']['project_cast']
+                            ?? $translation->project_cast,
                     ]);
                 }
 
-                $translation->update([
-                    'title' =>
-                        $validated['en']['title']
-                        ?? $translation->title,
 
-                    'subject' =>
-                        $validated['en']['subject']
-                        ?? $translation->subject,
+                /*
+                |--------------------------------------------------------------------------
+                | Gallery
+                |--------------------------------------------------------------------------
+                */
 
-                    'description' =>
-                        $validated['en']['description']
-                        ?? $translation->description,
+                if ($request->hasFile('images')) {
 
-                    'project_description' =>
-                        $validated['en']['project_description']
-                        ?? $translation->project_description,
+                    $lastSortOrder = $project
+                        ->images()
+                        ->max('sort_order');
 
-                    'campaign_description' =>
-                        $validated['en']['campaign_description']
-                        ?? $translation->campaign_description,
+                    $sortOrder = is_null($lastSortOrder)
+                        ? 0
+                        : $lastSortOrder + 1;
 
-                    'project_cast' =>
-                        $validated['en']['project_cast']
-                        ?? $translation->project_cast,
-                ]);
+                    foreach (
+                        $request->file('images')
+                        as $image
+                    ) {
+
+                        $path = $image->store(
+                            'projects/images',
+                            'api_public'
+                        );
+
+                        $newFiles[] = $path;
+
+                        $project->images()->create([
+                            'image' => $path,
+                            'sort_order' => $sortOrder,
+                        ]);
+
+                        $sortOrder++;
+                    }
+                }
+            });
+
+        } catch (\Throwable $e) {
+
+            foreach ($newFiles as $file) {
+                Storage::disk('api_public')
+                    ->delete($file);
             }
-        });
+
+            throw $e;
+        }
 
         $project->load([
             'translations',
@@ -455,11 +1034,11 @@ class ArtistProjectController extends Controller
 
     /*
     |--------------------------------------------------------------------------
-    | Store
+    | Destroy
     |--------------------------------------------------------------------------
     */
 
-    public function store(Request $request)
+    public function destroy($id): JsonResponse
     {
         $client = auth('api')->user();
 
@@ -473,214 +1052,202 @@ class ArtistProjectController extends Controller
         if ($client->role !== 'artist') {
             return response()->json([
                 'success' => false,
-                'message' => 'Only artists can create projects.',
+                'message' => 'Only artists can delete projects.',
             ], 403);
         }
 
-        if (!$client->artist) {
+        $artist = $client->artist;
+
+        if (!$artist) {
             return response()->json([
                 'success' => false,
                 'message' => 'Artist profile not found.',
             ], 404);
         }
 
-        $artist = $client->artist;
+        $project = Project::with([
+            'images',
+            'translations',
+            'campaignImages',
+        ])
+            ->where('id', $id)
+            ->where('owner_type', 'artist')
+            ->where('owner_id', $artist->id)
+            ->first();
 
-        $validated = $request->validate([
+        if (!$project) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Project not found.',
+            ], 404);
+        }
 
-            'client' => 'nullable|string|max:255',
-
-            'project_date' => 'nullable|date',
-
-            'type' => 'nullable|string|max:100',
-
-            'video' => 'nullable|file|max:102400',
-
-            'cover' => 'nullable|image|max:10240',
-
-            'behind_the_scenes_video' => 'nullable|file|max:102400',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Persian
-            |--------------------------------------------------------------------------
-            */
-
-            'fa.title' => 'required|string|max:255',
-
-            'fa.subject' => 'nullable|string|max:255',
-
-            'fa.description' => 'nullable|string',
-
-            'fa.project_description' => 'nullable|string',
-
-            'fa.campaign_description' => 'nullable|string',
-
-            'fa.project_cast' => 'nullable|string',
+        DB::transaction(function () use ($project) {
 
             /*
             |--------------------------------------------------------------------------
-            | English
+            | Main Files
             |--------------------------------------------------------------------------
             */
 
-            'en.title' => 'required|string|max:255',
+            if ($project->video) {
+                Storage::disk('api_public')
+                    ->delete($project->video);
+            }
 
-            'en.subject' => 'nullable|string|max:255',
+            if ($project->cover) {
+                Storage::disk('api_public')
+                    ->delete($project->cover);
+            }
 
-            'en.description' => 'nullable|string',
-
-            'en.project_description' => 'nullable|string',
-
-            'en.campaign_description' => 'nullable|string',
-
-            'en.project_cast' => 'nullable|string',
-        ]);
-
-        DB::transaction(function () use (
-            $request,
-            $validated,
-            $artist,
-            &$project
-        ) {
-
-            $project = Project::create([
-
-                'owner_type' => 'artist',
-
-                'owner_id' => $artist->id,
-
-                'client' =>
-                    $validated['client'] ?? null,
-
-                'project_date' =>
-                    $validated['project_date'] ?? null,
-
-                'type' =>
-                    $validated['type'] ?? null,
-
-                'status' => 'draft',
-            ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | Cover
-            |--------------------------------------------------------------------------
-            */
-
-            if ($request->hasFile('cover')) {
-
-                $project->cover = $request
-                    ->file('cover')
-                    ->store(
-                        'projects/covers',
-                        'public'
+            if ($project->behind_the_scenes_video) {
+                Storage::disk('api_public')
+                    ->delete(
+                        $project->behind_the_scenes_video
                     );
             }
 
 
             /*
             |--------------------------------------------------------------------------
-            | Video
+            | Project Images
             |--------------------------------------------------------------------------
             */
 
-            if ($request->hasFile('video')) {
+            foreach ($project->images as $image) {
 
-                $project->video = $request
-                    ->file('video')
-                    ->store(
-                        'projects/videos',
-                        'public'
-                    );
+                if ($image->image) {
+                    Storage::disk('api_public')
+                        ->delete($image->image);
+                }
+
+                $image->delete();
             }
 
 
             /*
             |--------------------------------------------------------------------------
-            | Behind The Scenes
+            | Campaign Images
             |--------------------------------------------------------------------------
             */
 
-            if ($request->hasFile('behind_the_scenes_video')) {
+            foreach (
+                $project->campaignImages as $image
+            ) {
 
-                $project->behind_the_scenes_video = $request
-                    ->file('behind_the_scenes_video')
-                    ->store(
-                        'projects/behind-the-scenes',
-                        'public'
-                    );
+                if ($image->image) {
+                    Storage::disk('api_public')
+                        ->delete($image->image);
+                }
+
+                $image->delete();
             }
 
-            $project->save();
+
+            /*
+            |--------------------------------------------------------------------------
+            | Translations
+            |--------------------------------------------------------------------------
+            */
+
+            $project->translations()->delete();
 
 
             /*
             |--------------------------------------------------------------------------
-            | Persian Translation
+            | Project
             |--------------------------------------------------------------------------
             */
 
-            $project->translations()->create([
-
-                'locale' => 'fa',
-
-                'title' =>
-                    $validated['fa']['title'],
-
-                'subject' =>
-                    $validated['fa']['subject'] ?? null,
-
-                'description' =>
-                    $validated['fa']['description'] ?? null,
-
-                'project_description' =>
-                    $validated['fa']['project_description'] ?? null,
-
-                'campaign_description' =>
-                    $validated['fa']['campaign_description'] ?? null,
-
-                'project_cast' =>
-                    $validated['fa']['project_cast'] ?? null,
-            ]);
-
-
-            /*
-            |--------------------------------------------------------------------------
-            | English Translation
-            |--------------------------------------------------------------------------
-            */
-
-            $project->translations()->create([
-
-                'locale' => 'en',
-
-                'title' =>
-                    $validated['en']['title'],
-
-                'subject' =>
-                    $validated['en']['subject'] ?? null,
-
-                'description' =>
-                    $validated['en']['description'] ?? null,
-
-                'project_description' =>
-                    $validated['en']['project_description'] ?? null,
-
-                'campaign_description' =>
-                    $validated['en']['campaign_description'] ?? null,
-
-                'project_cast' =>
-                    $validated['en']['project_cast'] ?? null,
-            ]);
+            $project->delete();
         });
 
         return response()->json([
             'success' => true,
-            'message' => 'Project created successfully.',
-            'project_id' => $project->id,
-            'status' => $project->status,
+            'message' => 'Project deleted successfully.',
+        ]);
+    }
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Submit
+    |--------------------------------------------------------------------------
+    */
+
+    public function submit($id): JsonResponse
+    {
+        $client = auth('api')->user();
+
+        if (!$client) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated.',
+            ], 401);
+        }
+
+        if ($client->role !== 'artist') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only artists can submit projects.',
+            ], 403);
+        }
+
+        $artist = $client->artist;
+
+        if (!$artist) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Artist profile not found.',
+            ], 404);
+        }
+
+        $project = Project::where('id', $id)
+            ->where('owner_type', 'artist')
+            ->where('owner_id', $artist->id)
+            ->first();
+
+        if (!$project) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Project not found.',
+            ], 404);
+        }
+
+        if (!in_array($project->status, [
+            'draft',
+            'rejected',
+        ])) {
+
+            return response()->json([
+                'success' => false,
+                'message' =>
+                    'Only draft or rejected projects can be submitted.',
+                'status' => $project->status,
+            ], 422);
+        }
+
+        $project->status = 'pending';
+
+        $project->submitted_at = now();
+
+        $project->reviewed_at = null;
+
+        $project->rejection_reason = null;
+
+        $project->save();
+
+        $project->load([
+            'translations',
+            'images',
+            'campaignImages',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' =>
+                'Project submitted for review successfully.',
+            'data' => $this->formatProject($project),
         ]);
     }
 
@@ -697,16 +1264,20 @@ class ArtistProjectController extends Controller
 
             'id' => $project->id,
 
+            /*
+            |--------------------------------------------------------------------------
+            | Main Files
+            |--------------------------------------------------------------------------
+            */
+
             'video' => $project->video
-                ? Storage::disk('public')->url(
-                    $project->video
-                )
+                ? Storage::disk('api_public')
+                    ->url($project->video)
                 : null,
 
             'cover' => $project->cover
-                ? Storage::disk('public')->url(
-                    $project->cover
-                )
+                ? Storage::disk('api_public')
+                    ->url($project->cover)
                 : null,
 
             'client' => $project->client,
@@ -719,10 +1290,17 @@ class ArtistProjectController extends Controller
 
             'behind_the_scenes_video' =>
                 $project->behind_the_scenes_video
-                    ? Storage::disk('public')->url(
-                    $project->behind_the_scenes_video
-                )
+                    ? Storage::disk('api_public')
+                    ->url(
+                        $project->behind_the_scenes_video
+                    )
                     : null,
+
+            /*
+            |--------------------------------------------------------------------------
+            | Status
+            |--------------------------------------------------------------------------
+            */
 
             'status' => $project->status,
 
@@ -734,13 +1312,26 @@ class ArtistProjectController extends Controller
                 ? $project->reviewed_at->toISOString()
                 : null,
 
-            'rejection_reason' => $project->rejection_reason,
+            'rejection_reason' =>
+                $project->rejection_reason,
+
+            /*
+            |--------------------------------------------------------------------------
+            | Translations
+            |--------------------------------------------------------------------------
+            */
 
             'fa' => $project->translations
                 ->firstWhere('locale', 'fa'),
 
             'en' => $project->translations
                 ->firstWhere('locale', 'en'),
+
+            /*
+            |--------------------------------------------------------------------------
+            | Gallery
+            |--------------------------------------------------------------------------
+            */
 
             'images' => $project->images
                 ->map(function ($image) {
@@ -749,30 +1340,45 @@ class ArtistProjectController extends Controller
                         'id' => $image->id,
 
                         'image' => $image->image
-                            ? Storage::disk('public')
+                            ? Storage::disk('api_public')
                                 ->url($image->image)
                             : null,
 
-                        'sort_order' => $image->sort_order,
+                        'sort_order' =>
+                            $image->sort_order,
                     ];
                 })
                 ->values(),
 
-            'campaign_images' => $project->campaignImages
-                ->map(function ($image) {
+            /*
+            |--------------------------------------------------------------------------
+            | Campaign Images
+            |--------------------------------------------------------------------------
+            */
 
-                    return [
-                        'id' => $image->id,
+            'campaign_images' =>
+                $project->campaignImages
+                    ->map(function ($image) {
 
-                        'image' => $image->image
-                            ? Storage::disk('public')
-                                ->url($image->image)
-                            : null,
+                        return [
+                            'id' => $image->id,
 
-                        'sort_order' => $image->sort_order,
-                    ];
-                })
-                ->values(),
+                            'image' => $image->image
+                                ? Storage::disk('api_public')
+                                    ->url($image->image)
+                                : null,
+
+                            'sort_order' =>
+                                $image->sort_order,
+                        ];
+                    })
+                    ->values(),
+
+            /*
+            |--------------------------------------------------------------------------
+            | Timestamps
+            |--------------------------------------------------------------------------
+            */
 
             'created_at' => $project->created_at
                 ? $project->created_at->toISOString()
