@@ -114,7 +114,7 @@ class MagazineResource extends Resource
                     'image/png',
                     'image/webp',
                 ])
-                ->maxSize(5120)
+                ->maxSize(512000)
                 ->imagePreviewHeight('300')
                 ->downloadable()
                 ->openable()
@@ -175,7 +175,10 @@ class MagazineResource extends Resource
     {
         return $table
             ->columns([
-
+                Tables\Columns\TextColumn::make('id')
+                    ->label('id')
+                    ->searchable()
+                    ->sortable(),
 
 
                 Tables\Columns\TextColumn::make('translations.title')

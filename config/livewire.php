@@ -65,14 +65,14 @@ return [
 
     'temporary_file_upload' => [
         'disk' => null,
-        'rules' => null,
+        'rules' => 'file|max:102400',
         'directory' => null,
         'middleware' => null,
-        'preview_mimes' => [   // این بخش را پیدا کن
-            'png', 'gif', 'bmp', 'jpg', 'jpeg', 'mp4', 'm4v', 'mp3', 'ogg', 'wav', 'webm', // پسوند webm را اینجا اضافه کن
+        'preview_mimes' => [
+            'png', 'gif', 'bmp', 'jpg', 'jpeg', 'mp4', 'm4v', 'mp3', 'ogg', 'wav', 'webm',
         ],
         'max_upload_time' => 5,
-        'cleanup' => true, // Should cleanup temporary uploads older than 24 hrs...
+        'cleanup' => true,
     ],
 
     /*
