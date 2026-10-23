@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ProjectApprovedMail;
-use App\Mail\ProjectdraftMail;
+use App\Mail\ProjectdraftMail; // Existing notification class for draft/pending
 use App\Mail\ProjectRejectedMail;
 use App\Models\Artist;
 use App\Models\Client;
@@ -203,7 +203,7 @@ class ProjectController extends Controller
 
             'status' => [
                 'nullable',
-                'in:pending,approved,rejected',
+                'in:draft,pending,approved,rejected',
             ],
 
             /*
@@ -639,7 +639,7 @@ class ProjectController extends Controller
             'status' => [
                 'sometimes',
                 'required',
-                'in:pending,approved,rejected',
+                'in:draft,pending,approved,rejected',
             ],
 
             /*
@@ -704,7 +704,43 @@ class ProjectController extends Controller
                 'mimes:jpg,jpeg,png,webp',
                 'max:5120',
             ],
+
+            // IDs of existing images in the desired order.
+            'image_order' => [
+                'sometimes',
+                'array',
+            ],
+            'image_order.*' => [
+                'required',
+                'integer',
+                'distinct',
+            ],
         ]);
+
+        // Reject invalid image IDs before changing any project data or files.
+        // Newly uploaded images (images[]) are appended after this existing-image order.
+        if (array_key_exists('image_order', $validated)) {
+            $existingIds = $project->images()
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->sort()
+                ->values()
+                ->all();
+
+            $requestedIds = collect($validated['image_order'])
+                ->map(fn ($id) => (int) $id)
+                ->sort()
+                ->values()
+                ->all();
+
+            if ($existingIds !== $requestedIds) {
+                return response()->json([
+                    'status' => false,
+                    'statusCode' => 422,
+                    'message' => 'image_order must contain every existing project image ID exactly once.',
+                ], 422);
+            }
+        }
 
         try {
 
@@ -914,6 +950,20 @@ class ProjectController extends Controller
 
             /*
             |--------------------------------------------------------------------------
+            | Reorder Existing Project Images (no file deletion)
+            |--------------------------------------------------------------------------
+            */
+
+            if (array_key_exists('image_order', $validated)) {
+                foreach ($validated['image_order'] as $index => $imageId) {
+                    $project->images()
+                        ->whereKey($imageId)
+                        ->update(['sort_order' => $index + 1]);
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
             | Add Project Images
             |--------------------------------------------------------------------------
             */
@@ -969,10 +1019,10 @@ class ProjectController extends Controller
 
                 if ($email) {
 
-                    if ($newStatus === 'pending') {
+                    if (in_array($newStatus, ['pending', 'draft'], true)) {
 
                         Mail::to($email)->send(
-                            new ProjectPendingMail($project)
+                            new ProjectdraftMail($project)
                         );
                     }
 
@@ -1287,6 +1337,11 @@ class ProjectController extends Controller
 
             'campaign_images' =>
                 $project->campaignImages
+                    ->sortBy([
+                        ['sort_order', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values()
                     ->map(function ($image) {
 
                         return [
@@ -1311,6 +1366,11 @@ class ProjectController extends Controller
 
             'images' =>
                 $project->images
+                    ->sortBy([
+                        ['sort_order', 'asc'],
+                        ['id', 'asc'],
+                    ])
+                    ->values()
                     ->map(function ($image) {
 
                         return [

@@ -3,24 +3,19 @@
 namespace App\Filament\Resources\ProjectResource\Pages;
 
 use App\Filament\Resources\ProjectResource;
-use App\Models\ProjectTranslation;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Support\Facades\Log;
-use Throwable;
 
 class CreateProject extends CreateRecord
 {
     protected static string $resource = ProjectResource::class;
 
-    /**
-     * اطلاعاتی که قبل از ذخیره پروژه از فرم جدا می‌کنیم.
-     */
     protected array $projectTranslations = [];
 
     protected array $galleryImages = [];
 
     /**
-     * آماده‌سازی داده‌های فرم قبل از ایجاد Project
+     * Prepare project data before creation.
      */
     protected function mutateFormDataBeforeCreate(array $data): array
     {
@@ -38,7 +33,7 @@ class CreateProject extends CreateRecord
         |--------------------------------------------------------------------------
         */
 
-        $this->galleryImages = $data['gallery_images'] ?? [];
+        $this->galleryImages = $data['gallery_uploads'] ?? [];
 
         /*
         |--------------------------------------------------------------------------
@@ -46,17 +41,86 @@ class CreateProject extends CreateRecord
         |--------------------------------------------------------------------------
         */
 
-        unset($data['translations']);
-        unset($data['gallery_images']);
+        unset(
+            $data['translations'],
+            $data['gallery_uploads'],
+            $data['gallery_images']
+        );
 
         return $data;
     }
 
     /**
-     * بعد از ایجاد Project
+     * Save translations and gallery after project creation.
      */
     protected function afterCreate(): void
     {
-        dd($this->galleryImages);
+        $project = $this->record;
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Translations
+        |--------------------------------------------------------------------------
+        */
+
+        foreach ($this->projectTranslations as $key => $translation) {
+            if (!is_array($translation)) {
+                continue;
+            }
+
+            $locale = $translation['locale'] ?? (
+            in_array($key, ['fa', 'en'], true)
+                ? $key
+                : null
+            );
+
+            if (!in_array($locale, ['fa', 'en'], true)) {
+                Log::warning('Wachaar: translation skipped', [
+                    'project_id' => $project->id,
+                    'key' => $key,
+                ]);
+
+                continue;
+            }
+
+            unset(
+                $translation['lang'],
+                $translation['locale']
+            );
+
+            $project->translations()->updateOrCreate(
+                ['locale' => $locale],
+                $translation
+            );
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Save Gallery Images
+        |--------------------------------------------------------------------------
+        */
+
+        foreach (array_values($this->galleryImages) as $index => $imagePath) {
+            if (!is_string($imagePath) || empty($imagePath)) {
+                continue;
+            }
+
+            $project->images()->create([
+                'image' => $imagePath,
+                'sort_order' => $index + 1,
+            ]);
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Log
+        |--------------------------------------------------------------------------
+        */
+
+        Log::info('Wachaar project created successfully', [
+            'project_id' => $project->id,
+            'translations_count' => count($this->projectTranslations),
+            'gallery_count' => count($this->galleryImages),
+        ]);
     }
 }

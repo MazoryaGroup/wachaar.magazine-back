@@ -47,7 +47,19 @@ return [
         'api_public' => [
             'driver' => 'local',
             'root' => 'storage',  // ← مسیر نسبی به base_path() یعنی main-laravel/storage
-            'url' => env('APP_URL') . '/public/storage',// URL روی ساب‌دامین api
+            'url' => env(
+                'API_PUBLIC_URL',
+                rtrim(env('APP_URL'), '/') . '/storage'
+            ),
+            'visibility' => 'public',
+            'throw' => false,
+        ],
+
+
+        'apii_public' => [
+            'driver' => 'local',
+            'root' => 'storage',  // ← مسیر نسبی به base_path() یعنی main-laravel/storage
+            'url' => env('APP_URL') . '/storage', // URL روی ساب‌دامین api
             'visibility' => 'public',
             'throw' => false,
         ],

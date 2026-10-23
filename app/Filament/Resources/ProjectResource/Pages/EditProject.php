@@ -8,8 +8,11 @@ use App\Mail\ProjectdraftMail;
 use App\Mail\ProjectRejectedMail;
 use App\Models\Artist;
 use App\Models\Client;
+use App\Models\Project;
 use App\Models\ProjectTranslation;
+use Filament\Actions;
 use Filament\Resources\Pages\EditRecord;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
 class EditProject extends EditRecord
@@ -18,9 +21,13 @@ class EditProject extends EditRecord
 
     protected ?string $previousStatus = null;
 
+    protected array $projectTranslations = [];
+
+    protected array $galleryImages = [];
+
     /*
     |--------------------------------------------------------------------------
-    | Get Previous Status
+    | Before Save
     |--------------------------------------------------------------------------
     */
 
@@ -42,38 +49,59 @@ class EditProject extends EditRecord
             ->get()
             ->keyBy('locale');
 
-        $data['translations'] = [
-            'en' => [
-                'title' => $translations->get('en')?->title,
-                'subject' => $translations->get('en')?->subject,
-                'description' => $translations->get('en')?->description,
-                'project_description' => $translations->get('en')?->project_description,
-                'project_cast' => $translations->get('en')?->project_cast,
-                'campaign_description' => $translations->get('en')?->campaign_description,
-            ],
+        foreach (['en', 'fa'] as $locale) {
+            $translation = $translations->get($locale);
 
-            'fa' => [
-                'title' => $translations->get('fa')?->title,
-                'subject' => $translations->get('fa')?->subject,
-                'description' => $translations->get('fa')?->description,
-                'project_description' => $translations->get('fa')?->project_description,
-                'project_cast' => $translations->get('fa')?->project_cast,
-                'campaign_description' => $translations->get('fa')?->campaign_description,
-            ],
-        ];
+            $data['translations'][$locale] = [
+                'title' => $translation?->title,
+                'subject' => $translation?->subject,
+                'description' => $translation?->description,
+                'project_description' => $translation?->project_description,
+                'project_cast' => $translation?->project_cast,
+                'campaign_description' => $translation?->campaign_description,
+            ];
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Load Existing Gallery Images
+        |--------------------------------------------------------------------------
+        */
+
+        $data['gallery_uploads'] = $this->record
+            ->images()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->pluck('image')
+            ->filter()
+            ->values()
+            ->all();
 
         return $data;
     }
 
     /*
     |--------------------------------------------------------------------------
-    | Before Save
+    | Prepare Data Before Save
     |--------------------------------------------------------------------------
     */
 
     protected function mutateFormDataBeforeSave(array $data): array
     {
-        unset($data['translations']);
+        $this->projectTranslations = $data['translations'] ?? [];
+
+        $this->galleryImages = array_values(
+            array_filter(
+                $data['gallery_uploads'] ?? [],
+                fn ($path) => is_string($path) && $path !== ''
+            )
+        );
+
+        unset(
+            $data['translations'],
+            $data['gallery_uploads'],
+            $data['gallery_images']
+        );
 
         return $data;
     }
@@ -86,32 +114,106 @@ class EditProject extends EditRecord
 
     protected function afterSave(): void
     {
+        $project = $this->record;
+
         /*
         |--------------------------------------------------------------------------
         | Save Translations
         |--------------------------------------------------------------------------
         */
 
-        $translations = $this->form->getState()['translations'] ?? [];
-
         foreach (['en', 'fa'] as $locale) {
-            $translation = $translations[$locale] ?? [];
+            $translation = $this->projectTranslations[$locale] ?? null;
+
+            if (!is_array($translation)) {
+                continue;
+            }
 
             ProjectTranslation::updateOrCreate(
                 [
-                    'project_id' => $this->record->id,
+                    'project_id' => $project->id,
                     'locale' => $locale,
                 ],
                 [
                     'title' => $translation['title'] ?? null,
                     'subject' => $translation['subject'] ?? null,
                     'description' => $translation['description'] ?? null,
-                    'project_description' => $translation['project_description'] ?? null,
-                    'project_cast' => $translation['project_cast'] ?? null,
-                    'campaign_description' => $translation['campaign_description'] ?? null,
+                    'project_description' =>
+                        $translation['project_description'] ?? null,
+                    'project_cast' =>
+                        $translation['project_cast'] ?? null,
+                    'campaign_description' =>
+                        $translation['campaign_description'] ?? null,
                 ]
             );
         }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Sync Gallery Order
+        |--------------------------------------------------------------------------
+        */
+
+        $existingImages = $project
+            ->images()
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->get();
+
+        $existingByPath = $existingImages->keyBy('image');
+
+        $position = 1;
+        $processedPaths = [];
+
+        foreach ($this->galleryImages as $path) {
+            if (in_array($path, $processedPaths, true)) {
+                continue;
+            }
+
+            $processedPaths[] = $path;
+
+            $existingImage = $existingByPath->get($path);
+
+            if ($existingImage) {
+                $existingImage->update([
+                    'sort_order' => $position,
+                ]);
+            } else {
+                $project->images()->create([
+                    'image' => $path,
+                    'sort_order' => $position,
+                ]);
+            }
+
+            $position++;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Preserve Existing Images Not In Submitted Gallery
+        |--------------------------------------------------------------------------
+        |
+        | Safety: do not delete existing image records or files.
+        | Images omitted from the form are appended to the gallery.
+        |
+        */
+
+        foreach ($existingImages as $image) {
+            if (in_array($image->image, $processedPaths, true)) {
+                continue;
+            }
+
+            $image->update([
+                'sort_order' => $position,
+            ]);
+
+            $position++;
+        }
+
+        Log::info('Wachaar project gallery updated', [
+            'project_id' => $project->id,
+            'gallery_count' => $position - 1,
+        ]);
 
         /*
         |--------------------------------------------------------------------------
@@ -119,23 +221,11 @@ class EditProject extends EditRecord
         |--------------------------------------------------------------------------
         */
 
-        $project = $this->record;
-
         $newStatus = $project->status;
-
-        /*
-        | اگر وضعیت تغییر نکرده، ایمیلی ارسال نشود.
-        */
 
         if ($this->previousStatus === $newStatus) {
             return;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Get Project Owner Email
-        |--------------------------------------------------------------------------
-        */
 
         $email = $this->getProjectOwnerEmail($project);
 
@@ -143,33 +233,25 @@ class EditProject extends EditRecord
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Send Email
-        |--------------------------------------------------------------------------
-        */
-        if ($newStatus === 'draft') {
-            Mail::to($email)->send(
-                new ProjectdraftMail($project)
-            );
-
-            return;
-        }
-
-        if ($newStatus === 'approved') {
-            Mail::to($email)->send(
-                new ProjectApprovedMail($project)
-            );
-
-            return;
-        }
-
-        if ($newStatus === 'rejected') {
-            Mail::to($email)->send(
-                new ProjectRejectedMail($project)
-            );
-
-            return;
+        try {
+            if ($newStatus === 'draft') {
+                Mail::to($email)->send(
+                    new ProjectdraftMail($project)
+                );
+            } elseif ($newStatus === 'approved') {
+                Mail::to($email)->send(
+                    new ProjectApprovedMail($project)
+                );
+            } elseif ($newStatus === 'rejected') {
+                Mail::to($email)->send(
+                    new ProjectRejectedMail($project)
+                );
+            }
+        } catch (\Throwable $e) {
+            Log::error('Wachaar project status email failed', [
+                'project_id' => $project->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -179,7 +261,7 @@ class EditProject extends EditRecord
     |--------------------------------------------------------------------------
     */
 
-    private function getProjectOwnerEmail($project): ?string
+    private function getProjectOwnerEmail(Project $project): ?string
     {
         if (
             empty($project->owner_type) ||
@@ -187,12 +269,6 @@ class EditProject extends EditRecord
         ) {
             return null;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Artist Owner
-        |--------------------------------------------------------------------------
-        */
 
         if (
             $project->owner_type === Artist::class ||
@@ -204,12 +280,6 @@ class EditProject extends EditRecord
 
             return $artist?->client?->email;
         }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Client Owner
-        |--------------------------------------------------------------------------
-        */
 
         if (
             $project->owner_type === Client::class ||
@@ -233,7 +303,7 @@ class EditProject extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            \Filament\Actions\DeleteAction::make(),
+            Actions\DeleteAction::make(),
         ];
     }
 }

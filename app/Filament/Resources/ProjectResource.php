@@ -214,52 +214,41 @@ class ProjectResource extends Resource
                     ->columns(1)
                     ->columnSpanFull(),
 
+
                 /*
                 |--------------------------------------------------------------------------
-                | Project Gallery
+                | Project Gallery — Bulk Upload + Drag & Drop
                 |--------------------------------------------------------------------------
                 */
 
                 Forms\Components\Section::make('Project Gallery')
                     ->schema([
 
-                        Forms\Components\Repeater::make('images')
-                            ->relationship()
-                            ->label('Project Images')
-                            ->schema([
-
-                                Forms\Components\FileUpload::make('image')
-                                    ->label('Image')
-                                    ->image()
-                                    ->disk('api_public')
-                                    ->directory('projects/images')
-                                    ->acceptedFileTypes([
-                                        'image/jpeg',
-                                        'image/png',
-                                        'image/webp',
-                                    ])
-                                    ->maxSize(5120)
-                                    ->required()
-                                    ->imagePreviewHeight('250')
-                                    ->downloadable()
-                                    ->openable(),
-
-                                Forms\Components\TextInput::make('sort_order')
-                                    ->label('Sort Order')
-                                    ->numeric()
-                                    ->default(0)
-                                    ->minValue(0),
-
+                        Forms\Components\FileUpload::make('gallery_uploads')
+                            ->label('آپلود گروهی تصاویر پروژه')
+                            ->image()
+                            ->multiple()
+                            ->reorderable()
+                            ->appendFiles()
+                            ->disk('api_public')
+                            ->directory('projects/images')
+                            ->visibility('public')
+                            ->acceptedFileTypes([
+                                'image/jpeg',
+                                'image/png',
+                                'image/webp',
                             ])
-                            ->columns(2)
-                            ->defaultItems(0)
-                            ->reorderable('sort_order')
-                            ->collapsible()
-                            ->cloneable()
+                            ->maxSize(5120)
+                            ->maxFiles(100)
+                            ->imagePreviewHeight('180')
+                            ->panelLayout('grid')
+                            ->downloadable()
+                            ->openable()
                             ->columnSpanFull(),
 
                     ])
                     ->columnSpanFull(),
+
 
                 /*
                 |--------------------------------------------------------------------------
