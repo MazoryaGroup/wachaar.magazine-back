@@ -216,7 +216,7 @@ class ArtistController extends Controller
             |--------------------------------------------------------------------------
             */
 
-            'facebook_url' => [
+            'linkedin_url' => [
                 'sometimes',
                 'nullable',
                 'url',
@@ -294,8 +294,8 @@ class ArtistController extends Controller
         |--------------------------------------------------------------------------
         */
 
-        if (array_key_exists('facebook_url', $validated)) {
-            $artist->facebook_url = $validated['facebook_url'];
+        if (array_key_exists('linkedin_url', $validated)) {
+            $artist->linkedin_url = $validated['linkedin_url'];
         }
 
         if (array_key_exists('instagram_url', $validated)) {
@@ -485,7 +485,7 @@ class ArtistController extends Controller
                 )
                 : null,
 
-            'facebook_url' => $artist->facebook_url,
+            'linkedin_url' => $artist->linkedin_url,
 
             'instagram_url' => $artist->instagram_url,
 

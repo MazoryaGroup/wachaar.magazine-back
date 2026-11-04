@@ -18,7 +18,7 @@ class Artist extends Model
 
         'profile_image',
 
-        'facebook_url',
+        'linkedin_url',
         'instagram_url',
         'youtube_url',
 

@@ -80,11 +80,11 @@ class ArtistResource extends Resource
                 Section::make('Social Media')
                     ->schema([
 
-                        TextInput::make('facebook_url')
-                            ->label('Facebook URL')
+                        TextInput::make('linkedin_url')
+                            ->label('linkedin URL')
                             ->url()
                             ->maxLength(500)
-                            ->placeholder('https://facebook.com/...'),
+                            ->placeholder('https://linkedin.com/...'),
 
                         TextInput::make('instagram_url')
                             ->label('Instagram URL')
